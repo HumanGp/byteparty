@@ -75,28 +75,13 @@ ByteParty is a **full-featured, terminal-based chat application** designed to br
    yarn install
    ```
 
-3. **Build the project:**
-   ```bash
-   npm run build
-   # or
-   yarn build
-   ```
-
-4. **Run the application:**
-   ```bash
-   npm start
-   # or
-   yarn start
-   # For development with hot reload:
-   npm run dev
-   ```
-
 ### Development Mode
-For active development with auto-recompilation:
+For active development using TypeScript directly:
 ```bash
 npm run dev
-# This runs TypeScript in watch mode and starts the app
 ```
+# Runs app.ts directly with ts-node (no compilation needed)
+
 
 ## 🏗 Architecture
 

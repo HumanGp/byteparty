@@ -2,18 +2,24 @@
   "name": "byteparty",
   "version": "1.0.0",
   "license": "MIT",
-  "description": "This is a terminal based RPG Game",
-  "main": "index.js",
+  "description": "Terminal chat application",
+  "main": "dist/app.js",  
   "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node app.ts", 
+    "build": "tsc",  
+    "start": "node dist/app.js",  
+    "watch": "tsc --watch"  
   },
-  "keywords": [],
+  "keywords": ["terminal", "chat", "irc", "tui"],
   "author": "HumanGpt",
   "license": "ISC",
   "devDependencies": {
     "@types/blessed": "^0.1.25",
-    "@types/node": "^24.7.2"
+    "@types/node": "^24.7.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
     "blessed": "^0.1.81",
