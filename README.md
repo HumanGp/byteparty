@@ -1,9 +1,5 @@
 # ByteParty: Terminal-Based IRC Chat Application
-
-<video autoplay loop muted playsinline width="600">
-  <source src="./assets/demo.mp4" type="video/mp4">
-</video>
-
+![demo image](./assets/demo.png)
 
 ## Project Vision
 
