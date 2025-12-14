@@ -6,7 +6,6 @@ import {
   onlineusersConfig_props,
 } from "./configs";
 import {
-  headerProps,
   inputBoxProps,
   MenuModalOptionListProps,
   MenuModalProps,
@@ -48,7 +47,6 @@ export class APP_UI {
   private dropdownManager!: DropdownManager;
   private statusBarManager!: StatusBarManager;
 
-
   // UI elements
   public screen!: Widgets.Screen;
   public messageList!: Widgets.ListElement;
@@ -58,7 +56,6 @@ export class APP_UI {
   public messageBoxWidth!: number;
   public menuBar!: Widgets.ListbarElement;
   public statusBar!: Widgets.BoxElement;
- 
 
   public userDropdown!: Widgets.ListElement;
 
@@ -70,26 +67,15 @@ export class APP_UI {
   private shortcuts = new Map<string, () => void>();
   private isModalOpen: boolean = false;
 
-
   // menu , modals and dropdown hidden menu
   private menuActions: Map<string, () => void> = new Map();
- 
 
   // menu modal content config
   private menuConfigs = { ...menuConfig_props };
   // user list data structure
   private users = { ...onlineusersConfig_props };
 
-  // banner + typewriter effect
-  public bannerLines = [
-    "  ________          _____       ________                 _____         ",
-    " ___  __ )_____  ____  /______ ___  __ \\______ ___________  /______  __",
-    " __  __  |__  / / /_  __/_  _ \\__  /_/ /_  __ \\`/__  ___/_  __/__  / / /",
-    " _  /_/ / _  /_/ / / /_  /  __/_  ____/ / /_/ / _  /    / /_  _  /_/ / ",
-    " /_____/  _\\__, /  \\__/  \\___/ /_/      \\__,_/  /_/     \\__/  _\\__, /  ",
-    "         /____/                                              /____/   ",
-    "                         T H E   C H A T   T H A T   B Y T E S !      ",
-  ];
+
 
   private constructor() {
     this.screen = BlessedScreen.getInstance();
@@ -112,10 +98,11 @@ export class APP_UI {
       this.onBootComplete = onComplete;
     }
 
+    // BootAnimation now owns the header creation and final content
     this.bootAnimation = new BootAnimation(this.screen, () => {
-      this.initializeUI();
+      // Only now do we create the rest of the UI
+      this.initializeRestOfUI(); // ← renamed, see below
       this.setupEvents();
-      this.setupFocusManagement();
       this.setupKeyboardShortcuts();
       this.processMessageQueue();
 
@@ -124,31 +111,19 @@ export class APP_UI {
         this.onBootComplete = null;
       }
     });
+
     this.bootAnimation.start();
   }
 
-  public startApp() {
-    this.initializeUI();
-    this.setupEvents();
-    this.setupFocusManagement();
-    this.setupKeyboardShortcuts();
-    this.processMessageQueue();
-  }
 
-  public initializeUI(): void {
-    // Clear the screen and show full banner
-    // this.screen.remove(this.header);
-
-    // Recreate header with full content
-    this.header = blessed.box({
-      ...headerProps,
-      content: this.bannerLines.join("\n"),
-    });
+  private initializeRestOfUI(): void {
+    // DO NOT recreate header — BootAnimation already did it perfectly
 
     //@ts-expect-error
     this.menuBar = blessed.listbar(menuProps);
 
-    this.messageList = blessed.list(messageBoxProps); //@ts-expect-error
+    this.messageList = blessed.list(messageBoxProps);
+    //@ts-expect-error
     this.userList = blessed.list(userListProps);
     this.statusBar = blessed.box(statusBarProps);
     //@ts-expect-error
@@ -160,57 +135,48 @@ export class APP_UI {
       ...userDropdownProps,
     });
 
-    this.screen.append(this.header);
+    // Append everything — header is already appended by BootAnimation
     this.screen.append(this.messageList);
     this.screen.append(this.userList);
     this.screen.append(this.inputBox);
     this.screen.append(this.menuBar);
     this.screen.append(this.statusBar);
 
+    // Now safe to create managers
     this.messageBoxWidth = this.messageList.width as number;
-  
-    this.statusBarManager = new StatusBarManager(this.statusBar, this.screen);
 
-    this.focusManager = new FocusManager((element, index) => {
+    this.statusBarManager = new StatusBarManager(this.statusBar, this.screen);
+    this.statusBarManager.startUpdates();
+
+    this.focusManager = new FocusManager((_, index) => {
       const names = ["Input", "Messages", "User List", "Menu"];
-      this.statusBarManager.setCurrentFocus(names[index] || "Unkown");
+      this.statusBarManager.setCurrentFocus(names[index] ?? "Unknown");
     });
 
-    // Register in order: Input → Messages → Users → Menu
     this.focusManager.register(
       this.inputBox,
       this.messageList,
       this.userList,
       this.menuBar
     );
-    // Default focus on input
     this.focusManager.focusInput();
-   
 
-    this.modalManager = new ModalManager(this.screen, (isOpen: boolean) => {
-      this.isModalOpen = isOpen; 
+    this.modalManager = new ModalManager(this.screen, (isOpen) => {
+      this.isModalOpen = isOpen;
       this.statusBarManager.setModalOpen(isOpen);
     });
 
     this.dropdownManager = new DropdownManager(this.screen);
     this.messageFormatter = new MessageFormatter(this.messageList);
 
-
-    this.statusBarManager.startUpdates();
-    
-
+    // Test messages
     this.addSystemMessage(`MessageList width: ${this.messageBoxWidth}`);
-    this.addSystemMessage(
-      `This is an example of a text that am using to test how long the message can go before it becomes too long to render`
-    );
+    this.addSystemMessage("Welcome to ByteParty! Animation complete.");
   }
-
-
 
   /*=======================================================*
    |       KEYBOARD AND  ELEMENT FOCUS MANAGEMENT         |
    *=======================================================*/
-
 
   // ================= KEYBOARD SHORTCUTS =====================
 
@@ -545,20 +511,15 @@ export class APP_UI {
     } else {
       // Switch to detailed mode
       const details = `
-{cyan-fg}ByteParty Status{/cyan-fg} | Focus: ${
-        this.focusManager.getCurrentIndex()
-      } | Messages: ${
+{cyan-fg}ByteParty Status{/cyan-fg} | Focus: ${this.focusManager.getCurrentIndex()} | Messages: ${
         //@ts-expect-error
         this.messageList.items.length
       } | 
-Users: ${''
+Users: ${
+        ""
         /** TODO: */
-      //  this.statusInfo.users
-      } | Memory: ${(
-        process.memoryUsage().heapUsed /
-        1024 /
-        1024
-      ).toFixed(1)}MB
+        //  this.statusInfo.users
+      } | Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB
     `
         .trim()
         .replace(/\n/g, " | ");
@@ -573,24 +534,21 @@ Users: ${''
     }, 5000);
   }
 
-
-
-
   public updateConnectionStatus(
     status: "Connected" | "Connecting" | "Disconnected" | "Error",
     server?: string
   ): void {
-     let fullStatus = status;
-     if (server) fullStatus += ` (${server})`;
-     this.statusBarManager.setConnectionStatus(fullStatus);
+    let fullStatus = status;
+    if (server) fullStatus += ` (${server})`;
+    this.statusBarManager.setConnectionStatus(fullStatus);
 
-     if (status === "Connected") {
-       this.statusBarManager.alert("#00ff00");
-     } else if (status === "Connecting") {
-       this.statusBarManager.alert("#ffff00");
-     } else {
-       this.statusBarManager.alert("#ff6b6b");
-     }
+    if (status === "Connected") {
+      this.statusBarManager.alert("#00ff00");
+    } else if (status === "Connecting") {
+      this.statusBarManager.alert("#ffff00");
+    } else {
+      this.statusBarManager.alert("#ff6b6b");
+    }
   }
 
   private updateUserCounts(): void {
@@ -604,17 +562,14 @@ Users: ${''
     this.statusBarManager.setMessageCount(this.messageList.items.length);
   }
 
-
-
   private handleEscapeKey(): void {
-     if (this.modalManager.isOpen()) {
-       this.modalManager.closeTop();
-     } else if (!this.focusManager.focusInput()) {
-       this.inputBox.clearValue();
-       this.screen.render();
-     }
+    if (this.modalManager.isOpen()) {
+      this.modalManager.closeTop();
+    } else if (!this.focusManager.focusInput()) {
+      this.inputBox.clearValue();
+      this.screen.render();
+    }
   }
-
 
   // Action Methods
   private showHelpModal(): void {
@@ -656,7 +611,7 @@ Groups: 3
   }
 
   private refreshInterface(): void {
-   this.statusBarManager.showTemporary("Refreshing interface...");
+    this.statusBarManager.showTemporary("Refreshing interface...");
     this.addSystemMessage("Refreshing interface...");
     this.screen.realloc(); // Recalculate layout
     this.screen.render();
@@ -921,7 +876,6 @@ Groups: 3
       this.screen.render();
     });
 
-
     this.screen.render();
   }
 
@@ -958,8 +912,6 @@ Groups: 3
         this.addSystemMessage(`Command not found: ${command}`);
     }
   }
-
- 
 
   /*=======================================================*
    |                  MESSAGE  LOGS                        |
@@ -1087,7 +1039,7 @@ Groups: 3
         }, index * 50); // 50ms delay between each queued message
       });
 
-     this.statusBarManager.setQueuedMessages(0);
+      this.statusBarManager.setQueuedMessages(0);
     }
   }
 
@@ -1118,8 +1070,6 @@ Groups: 3
     this.addMessage("System", text, "#d4af37");
   }
 
-
-
   private addMessage(
     user: string,
     text: string,
@@ -1129,9 +1079,6 @@ Groups: 3
     const formatted = `{${color}-fg}{bold}${user}{/bold}{/${color}-fg} [${timestamp}]: ${text}`;
     this.messageFormatter.add(formatted);
   }
-
-
-
 
   /*=======================================================*
    |                     USER LIST                         |
@@ -1196,7 +1143,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-
     switch (index) {
       case 3: // Start Private Chat
         this.startPrivateChat(username);
@@ -1227,7 +1173,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-
     switch (index) {
       case 4: // Join Channel
         this.joinChannel(channel);
@@ -1255,7 +1200,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-
     switch (index) {
       case 4: // Open Group Chat
         this.openGroupChat(groupName);
@@ -1283,7 +1227,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-
     let message = "";
 
     switch (index) {
@@ -1372,10 +1315,7 @@ Groups: 3
     );
   }
 
-
-
   private showChannelDropdown(channel: string, clickData: any): void {
- 
     const chan = this.users.channels.find((c) => c.name === channel);
 
     const position = {
@@ -1629,7 +1569,6 @@ Groups: 3
       vi: true,
     });
 
-
     modal.focus();
     this.screen.render();
   }
@@ -1669,7 +1608,6 @@ Groups: 3
    *=======================================================*/
 
   private executeMenuAction(action: string, menuType: string): void {
-
     switch (action) {
       // Key Binds actions
       case "showHelp":
@@ -1781,8 +1719,6 @@ Groups: 3
   }
 
   private promptCustomServer(): void {
-  
-
     const modal = blessed.box({
       parent: this.screen,
       top: "center",
@@ -1860,8 +1796,6 @@ Groups: 3
     hostInput.on("submit", () => portInput.focus());
     portInput.on("submit", () => connectButton.focus());
 
-
-    
     this.screen.render();
   }
 
@@ -1955,7 +1889,6 @@ Groups: 3
     width,
     height,
   }: InfoModalProps): void {
-
     //@ts-expect-error
     const modal = blessed.box({
       parent: this.screen,
@@ -1980,7 +1913,6 @@ Groups: 3
   }
 
   private showMenuModal(menuType: MenuModalType): void {
-
     const config = this.menuConfigs[menuType as keyof typeof this.menuConfigs];
     if (!config) {
       console.error(`No config found for menu type: ${menuType}`);
@@ -2034,7 +1966,6 @@ Groups: 3
       ...ModalFooterProps,
     });
 
-
     // Position and size the modal
     const modalHeight = config.items.length + 6; // Items + title + borders + footer
     const modalWidth =
@@ -2043,12 +1974,11 @@ Groups: 3
         config.title.length
       ) + 10;
 
-     modal.width = modalWidth;
-     modal.height = modalHeight;
+    modal.width = modalWidth;
+    modal.height = modalHeight;
 
     this.modalManager.open(modal);
     // Focus the option list
     optionList.focus();
-    
   }
 }
