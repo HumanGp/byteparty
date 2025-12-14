@@ -1,0 +1,27 @@
+{
+  "global": {
+    "tab": "focus:next",
+    "S-tab": "focus:previous",
+    "C-i": "focus:input",
+    "C-m": "focus:messages",
+    "C-u": "focus:users",
+    "C-b": "focus:menu",
+    "escape": "ui:escape",
+    "C-q": "app:quit",
+    "f1": "modal:help",
+    "f2": "ui:confetti",
+    "C-l": "chat:clear",
+    "/": "input:search",
+    ":": "modal:command"
+  },
+  "inputBox": {
+    "up": "history:up",
+    "down": "history:down",
+    "C-enter": "message:send"
+  },
+  "messageList": {
+    "pageup": "scroll:up-large",
+    "pagedown": "scroll:down-large",
+    "r": "message:reply"
+  }
+}
