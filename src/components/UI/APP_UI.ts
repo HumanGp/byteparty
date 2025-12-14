@@ -1,10 +1,13 @@
-import * as blessed from 'blessed';
+import * as blessed from "blessed";
 import { Widgets } from "blessed";
-import { menuConfig_props, modalContent_config, onlineusersConfig_props } from "./configs";
+import {
+  menuConfig_props,
+  modalContent_config,
+  onlineusersConfig_props,
+} from "./configs";
 import {
   headerProps,
   inputBoxProps,
-  loadingScreenProps,
   MenuModalOptionListProps,
   MenuModalProps,
   MenuModalTitleBoxProps,
@@ -13,11 +16,18 @@ import {
   ModalFooterProps,
   ModalProps,
   ModalTitleBoxProps,
-  screenProps,
   statusBarProps,
   userDropdownProps,
   userListProps,
-} from"./ui";    
+} from "./ui";
+
+import { BlessedScreen } from "./BlessedScreen";
+import { BootAnimation } from "../../animations/BootAnimation";
+import { MessageFormatter } from "./messages/MessageFormatter";
+import { FocusManager } from "./focus/FocusManager";
+import { ModalManager } from "./modals/ModalManager";
+import { DropdownManager } from "./dropdowns/DropdownManager";
+import { StatusBarManager } from "./status/StatusBarManager";
 
 interface InfoModalProps {
   title: string;
@@ -31,6 +41,14 @@ type MenuModalType = "key-binds" | "servers" | "region" | "help";
 export class APP_UI {
   private static instance: APP_UI | null = null;
 
+  private bootAnimation!: BootAnimation;
+  private messageFormatter!: MessageFormatter;
+  private focusManager!: FocusManager;
+  private modalManager!: ModalManager;
+  private dropdownManager!: DropdownManager;
+  private statusBarManager!: StatusBarManager;
+
+
   // UI elements
   public screen!: Widgets.Screen;
   public messageList!: Widgets.ListElement;
@@ -40,38 +58,22 @@ export class APP_UI {
   public messageBoxWidth!: number;
   public menuBar!: Widgets.ListbarElement;
   public statusBar!: Widgets.BoxElement;
-  private statusUpdateInterval: NodeJS.Timeout | null = null;
-  private statusInfo: {
-    focus: string;
-    users: number;
-    channels: number;
-    groups: number;
-    connection: string;
-    time: string;
-  } = {
-    focus: "Input",
-    users: 0,
-    channels: 0,
-    groups: 0,
-    connection: "Disconnected",
-    time: "",
-  };
+ 
+
   public userDropdown!: Widgets.ListElement;
 
   private onBootComplete: (() => void) | null = null;
+
   private messageQueue: string[] = [];
 
   // keyboard shortcuts
   private shortcuts = new Map<string, () => void>();
-  private focusCycle: any[] = [];
-  private currentFocusIndex = 0;
-  private isModalOpen = false;
+  private isModalOpen: boolean = false;
+
 
   // menu , modals and dropdown hidden menu
-  private activeModal: Widgets.BoxElement | null = null;
   private menuActions: Map<string, () => void> = new Map();
-  private activeDropdown: Widgets.ListElement | null = null;
-  private dropdownPosition: { x: number; y: number } = { x: 0, y: 0 };
+ 
 
   // menu modal content config
   private menuConfigs = { ...menuConfig_props };
@@ -89,15 +91,8 @@ export class APP_UI {
     "                         T H E   C H A T   T H A T   B Y T E S !      ",
   ];
 
-  private currentLine = 0;
-  private currentChar = 0;
-  private typingSpeed = 10; // ms per character
-  private lineDelay = 0.1; // ms between lines
-  private isTyping = false;
-  private loadingScreen!: Widgets.BoxElement;
-
   private constructor() {
-    this.screen = blessed.screen(screenProps);
+    this.screen = BlessedScreen.getInstance();
   }
 
   public static getInstance() {
@@ -117,298 +112,32 @@ export class APP_UI {
       this.onBootComplete = onComplete;
     }
 
-    //logo
-    const rawLogoAscii = [
-      "     ███ █████   █████ █████ █████    █████████  ███████████  ███████████ ███      ",
-      "    ██░ ░░███   ░░███ ░░███ ░░███    ███░░░░░███░░███░░░░░███░█░░░███░░░█░░░███    ",
-      "   ██    ░███    ░███  ░███  ░███ █ ███     ░░░  ░███    ░███░   ░███  ░   ░░░███  ",
-      " ███     ░███████████  ░███████████░███          ░██████████     ░███        ░░░███",
-      "░░░██    ░███░░░░░███  ░░░░░░░███░█░███    █████ ░███░░░░░░      ░███         ███░ ",
-      "  ░░██   ░███    ░███        ░███░ ░░███  ░░███  ░███            ░███       ███░   ",
-      "   ░░███ █████   █████       █████  ░░█████████  █████           █████    ███░     ",
-      "    ░░░ ░░░░░   ░░░░░       ░░░░░    ░░░░░░░░░  ░░░░░           ░░░░░    ░░░       ",
-    ];
+    this.bootAnimation = new BootAnimation(this.screen, () => {
+      this.initializeUI();
+      this.setupEvents();
+      this.setupFocusManagement();
+      this.setupKeyboardShortcuts();
+      this.processMessageQueue();
 
-    const logoAscii = rawLogoAscii.map((line) => {
-      const leadingMatch = line.match(/^\s*/);
-      if (!leadingMatch) return line;
-      const leading = leadingMatch[0].replace(/ /g, "\u00A0"); // convert regular spaces to NBSP
-      return leading + line.slice(leadingMatch[0].length);
-    });
-
-    this.loadingScreen = blessed.box({
-      ...loadingScreenProps,
-      content: this.getCenteredLoadingScreen(logoAscii),
-      style: {
-        ...loadingScreenProps.style,
-        bg: this.getGradientBackground(),
-      },
-    });
-
-    this.screen.append(this.loadingScreen);
-    this.screen.render();
-
-    // Start the typewriter animation after a brief delay
-    setTimeout(() => {
-      this.startTypewriterAnimation();
-    }, 5000);
-  }
-
-  private getCenteredLoadingScreen(asciiArt: string[]): string {
-    const screenWidth = this.screen.width as number;
-    const screenHeight = this.screen.height as number;
-
-    // Calculate vertical position
-    const asciiHeight = asciiArt.length;
-    const verticalPadding = Math.max(
-      0,
-      Math.floor((screenHeight - asciiHeight - 5) / 2)
-    );
-
-    let content = "";
-
-    // Add top padding
-    for (let i = 0; i < verticalPadding; i++) {
-      content += "\n";
-    }
-
-    // Add ASCII art, centered horizontally
-    asciiArt.forEach((line) => {
-      const padding = Math.max(0, Math.floor((screenWidth - line.length) / 2));
-      content +=
-        " ".repeat(padding) + "{#ff6b6b-fg}" + line + "{/#ff6b6b-fg}\n";
-    });
-
-    content += "\n";
-    const poweredBy =
-      "{#a08c76-fg}╔══════════════════════════════════════════════════════════════════╗{/#a08c76-fg}\n";
-    const poweredBy2 =
-      "{#a08c76-fg}║                    powered by HumanGpt                           ║{/#a08c76-fg}\n";
-    const poweredBy3 =
-      "{#a08c76-fg}╚══════════════════════════════════════════════════════════════════╝{/#a08c76-fg}";
-
-    // Center the "powered by" box
-    const boxWidth = 70;
-    const padding = Math.max(0, Math.floor((screenWidth - boxWidth) / 2));
-
-    content += " ".repeat(padding) + poweredBy;
-    content += " ".repeat(padding) + poweredBy2;
-    content += " ".repeat(padding) + poweredBy3;
-
-    // Add bottom padding
-    const remainingLines = screenHeight - verticalPadding - asciiHeight - 7;
-    for (let i = 0; i < Math.max(0, remainingLines); i++) {
-      content += "\n";
-    }
-
-    return content;
-  }
-
-  private getGradientBackground(): string {
-    const gradientColors = [
-      "#0a0a0a",
-      "#0f0f0f",
-      "#141414",
-      "#191919",
-      "#1e1e1e",
-      "#232323",
-      "#282828",
-      "#2d2d2d",
-    ];
-
-    return "#1a1a1a";
-  }
-
-  private startTypewriterAnimation(): void {
-    this.isTyping = true;
-
-    // Create a fade-out effect for the loading screen
-    this.fadeOutLoadingScreen(() => {
-      // Create the header (empty at first)
-      this.header = blessed.box({ ...headerProps });
-      this.screen.append(this.header);
-      this.screen.render();
-
-      // Start typing the first line
-      this.typeNextLine();
-    });
-  }
-
-  // New fade-out animation for loading screen
-  private fadeOutLoadingScreen(callback: () => void): void {
-    const fadeSteps = 10;
-    let currentStep = 0;
-
-    const fadeInterval = setInterval(() => {
-      // Calculate opacity (from 1 to 0)
-      const opacity = 1 - currentStep / fadeSteps;
-
-      // Apply fade effect by changing colors
-      const fadedColor = this.interpolateColor("#ff6b6b", "#1a1a1a", opacity);
-      const fadedBgColor = this.interpolateColor("#1a1a1a", "#000000", opacity);
-
-      // Update loading screen style
-      this.loadingScreen.style = {
-        fg: fadedColor,
-        bg: fadedBgColor,
-      };
-
-      this.screen.render();
-      currentStep++;
-
-      if (currentStep > fadeSteps) {
-        clearInterval(fadeInterval);
-        this.loadingScreen.destroy();
-        callback();
+      if (this.onBootComplete) {
+        this.onBootComplete();
+        this.onBootComplete = null;
       }
-    }, 50);
+    });
+    this.bootAnimation.start();
   }
 
-  // Helper method for color interpolation
-  private interpolateColor(
-    color1: string,
-    color2: string,
-    factor: number
-  ): string {
-    // Parse hex colors
-    const parseHex = (hex: string) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result
-        ? {
-            r: parseInt(result[1]!, 16),
-            g: parseInt(result[2]!, 16),
-            b: parseInt(result[3]!, 16),
-          }
-        : { r: 0, g: 0, b: 0 };
-    };
-
-    const c1 = parseHex(color1);
-    const c2 = parseHex(color2);
-
-    const r = Math.round(c1.r + (c2.r - c1.r) * factor);
-    const g = Math.round(c1.g + (c2.g - c1.g) * factor);
-    const b = Math.round(c1.b + (c2.b - c1.b) * factor);
-
-    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-  }
-
-  private typeNextLine(): void {
-    if (this.currentLine >= this.bannerLines.length) {
-      this.isTyping = false;
-
-      // delay then initialize ui
-      setTimeout(() => {
-        this.initializeUI();
-        this.setupEvents();
-        this.initializeFocusCycle();
-        this.setupFocusManagement();
-        this.setupKeyboardShortcuts();
-
-        // Process any queued messages
-        this.processMessageQueue();
-        // Call the completion callback
-        if (this.onBootComplete) {
-          this.onBootComplete();
-          this.onBootComplete = null; // Clear callback after calling
-        }
-      }, 800); // Brief pause after typing completes
-      return;
-    }
-
-    const line = this.bannerLines[this.currentLine];
-    this.currentChar = 0;
-
-    // Start typing this line character by character
-    //@ts-expect-error
-    this.typeCharacter(line);
-  }
-
-  private typeCharacter(line: string): void {
-    if (this.currentChar >= line.length) {
-      // Line complete, move to next line after delay
-      this.currentLine++;
-      this.currentChar = 0;
-
-      // Add cursor blink effect at end of line
-      this.showCursorBlink(() => {
-        setTimeout(() => {
-          this.typeNextLine();
-        }, this.lineDelay);
-      });
-
-      return;
-    }
-
-    // Get the current content
-    const currentContent = this.header.getContent();
-
-    // Build the new content with the next character
-    const linesSoFar = this.bannerLines.slice(0, this.currentLine);
-    const currentLineProgress = line.substring(0, this.currentChar + 1);
-
-    let newContent = "";
-    if (linesSoFar.length > 0) {
-      newContent = linesSoFar.join("\n") + "\n" + currentLineProgress;
-    } else {
-      newContent = currentLineProgress;
-    }
-
-    // Update the header with typing cursor
-    this.header.setContent(newContent + "{#d4af37-fg}_{/#d4af37-fg}");
-    this.screen.render();
-
-    this.currentChar++;
-
-    // Schedule next character
-    setTimeout(() => {
-      this.typeCharacter(line);
-    }, this.typingSpeed);
-  }
-
-  private showCursorBlink(callback: () => void): void {
-    let blinkCount = 0;
-    const maxBlinks = 3;
-    const blinkSpeed = 200;
-
-    const blink = () => {
-      if (blinkCount >= maxBlinks * 2) {
-        // Remove cursor and continue
-        const linesSoFar = this.bannerLines.slice(0, this.currentLine);
-        let newContent = "";
-        if (linesSoFar.length > 0) {
-          newContent = linesSoFar.join("\n");
-        }
-        this.header.setContent(newContent);
-        this.screen.render();
-        callback();
-        return;
-      }
-
-      const linesSoFar = this.bannerLines.slice(0, this.currentLine);
-      let content = "";
-      if (linesSoFar.length > 0) {
-        content = linesSoFar.join("\n");
-      }
-
-      // Alternate between showing and hiding cursor
-      if (blinkCount % 2 === 0) {
-        this.header.setContent(content + "{#d4af37-fg}_{/#d4af37-fg}");
-      } else {
-        this.header.setContent(content);
-      }
-
-      this.screen.render();
-      blinkCount++;
-
-      setTimeout(blink, blinkSpeed);
-    };
-
-    blink();
+  public startApp() {
+    this.initializeUI();
+    this.setupEvents();
+    this.setupFocusManagement();
+    this.setupKeyboardShortcuts();
+    this.processMessageQueue();
   }
 
   public initializeUI(): void {
     // Clear the screen and show full banner
-    this.screen.remove(this.header);
+    // this.screen.remove(this.header);
 
     // Recreate header with full content
     this.header = blessed.box({
@@ -439,12 +168,36 @@ export class APP_UI {
     this.screen.append(this.statusBar);
 
     this.messageBoxWidth = this.messageList.width as number;
+  
+    this.statusBarManager = new StatusBarManager(this.statusBar, this.screen);
 
-    // Initialize status information
-    this.updateStatusInfo();
+    this.focusManager = new FocusManager((element, index) => {
+      const names = ["Input", "Messages", "User List", "Menu"];
+      this.statusBarManager.setCurrentFocus(names[index] || "Unkown");
+    });
 
-    // Start status updates
-    this.startStatusUpdates();
+    // Register in order: Input → Messages → Users → Menu
+    this.focusManager.register(
+      this.inputBox,
+      this.messageList,
+      this.userList,
+      this.menuBar
+    );
+    // Default focus on input
+    this.focusManager.focusInput();
+   
+
+    this.modalManager = new ModalManager(this.screen, (isOpen: boolean) => {
+      this.isModalOpen = isOpen; 
+      this.statusBarManager.setModalOpen(isOpen);
+    });
+
+    this.dropdownManager = new DropdownManager(this.screen);
+    this.messageFormatter = new MessageFormatter(this.messageList);
+
+
+    this.statusBarManager.startUpdates();
+    
 
     this.addSystemMessage(`MessageList width: ${this.messageBoxWidth}`);
     this.addSystemMessage(
@@ -452,112 +205,12 @@ export class APP_UI {
     );
   }
 
-  private startStatusUpdates(): void {
-    // Update time every second
-    this.updateStatusBar();
 
-    this.statusUpdateInterval = setInterval(() => {
-      this.updateStatusBar();
-    }, 1000);
-  }
-
-  private updateStatusInfo(): void {
-    // Update user count
-    //@ts-expect-error
-    const userItems = this.userList.items as string[];
-    const onlineUsers = userItems.filter(
-      (item) =>
-        typeof item === "string" && item.includes("@") && !item.includes("===")
-    ).length;
-
-    const channels = userItems.filter(
-      (item) => typeof item === "string" && item.includes("#")
-    ).length;
-
-    const groups = userItems.filter(
-      (item) =>
-        typeof item === "string" &&
-        !item.includes("@") &&
-        !item.includes("#") &&
-        !item.includes("===") &&
-        item.trim() !== ""
-    ).length;
-
-    this.statusInfo.users = onlineUsers;
-    this.statusInfo.channels = channels;
-    this.statusInfo.groups = groups;
-
-    // Update current time
-    const now = new Date();
-    this.statusInfo.time = now.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  }
-
-  private updateStatusBar(): void {
-    this.updateStatusInfo();
-
-    const elementNames = ["Input", "Messages", "User List", "Menu"];
-    const currentFocusName = elementNames[this.currentFocusIndex] || "Unknown";
-
-    // Build status content
-    let statusContent = "";
-
-    // Left section: Connection status
-    statusContent += `{cyan-fg}●{/cyan-fg} {bold}${this.statusInfo.connection}{/bold}`;
-
-    // Middle section: Current focus
-    statusContent += " | ";
-    statusContent += `Focus: {#ff6b6b-fg}{bold}${currentFocusName}{/bold}{/#ff6b6b-fg}`;
-
-    // Right section: Counts and time
-    statusContent += " | ";
-    statusContent += `🗣  :${this.statusInfo.users} `;
-    statusContent += `🕬  :${this.statusInfo.channels} `;
-    statusContent += `🗫  :${this.statusInfo.groups} `;
-    statusContent += `| 🕰  :${this.statusInfo.time}`;
-
-    // Calculate message count
-    //@ts-expect-error
-    const messageCount = this.messageList.items.length;
-    statusContent += ` | 🗨  :${messageCount}`;
-
-    // Check if there are queued messages
-    if (this.messageQueue.length > 0) {
-      statusContent += ` {yellow-fg}(+${this.messageQueue.length} queued){/yellow-fg}`;
-    }
-
-    // Check if modal is open
-    if (this.isModalOpen) {
-      statusContent += ` {magenta-fg}[Modal Open]{/magenta-fg}`;
-    }
-
-    // Check if dropdown is active
-    if (this.activeDropdown) {
-      statusContent += ` {cyan-fg}[Dropdown]{/cyan-fg}`;
-    }
-
-    this.statusBar.setContent(statusContent);
-    this.screen.render();
-  }
 
   /*=======================================================*
    |       KEYBOARD AND  ELEMENT FOCUS MANAGEMENT         |
    *=======================================================*/
 
-  private initializeFocusCycle(): void {
-    // focus cycle order
-    this.focusCycle = [
-      this.inputBox, // 0: Input box (default)
-      this.messageList, // 1: Message list
-      this.userList, // 2: User List
-      this.menuBar, // 3: Menu bar
-    ];
-
-    this.currentFocusIndex = 0;
-  }
 
   // ================= KEYBOARD SHORTCUTS =====================
 
@@ -582,32 +235,32 @@ export class APP_UI {
 
     // Tab navigation between elements
     this.screen.key(["tab"], () => {
-      this.focusNextElement();
+      this.focusManager.next();
     });
 
     this.screen.key(["S-tab"], () => {
-      this.focusPreviousElement();
+      this.focusManager.previous();
     });
 
     // Quick navigation shortcuts
     this.screen.key(["C-i"], () => {
       // Ctrl+I or Cmd+I
-      this.focusInputBox();
+      this.focusManager.focusInput();
     });
 
     this.screen.key(["C-m"], () => {
       // Ctrl+M or Cmd+M
-      this.focusMessageList();
+      this.focusManager.focusMessages();
     });
 
     this.screen.key(["C-u"], () => {
       // Ctrl+U or Cmd+U
-      this.focusUserList();
+      this.focusManager.focusUserList();
     });
 
     this.screen.key(["C-b"], () => {
       // Ctrl+B or Cmd+B
-      this.focusMenuBar();
+      this.focusManager.focusMenu();
     });
 
     // Modal/Window management
@@ -644,7 +297,7 @@ export class APP_UI {
 
     // Search
     this.screen.key(["/"], () => {
-      this.focusInputBox();
+      this.focusManager.focusInput();
       this.inputBox.setValue("/");
       this.screen.render();
     });
@@ -876,7 +529,7 @@ export class APP_UI {
       if (el.type === "modal" || (el.parent && el.parent.type === "modal")) {
         this.isModalOpen = false;
         setTimeout(() => {
-          this.restorePreviousFocus();
+          this.focusManager.previous();
         }, 50);
       }
     });
@@ -893,12 +546,15 @@ export class APP_UI {
       // Switch to detailed mode
       const details = `
 {cyan-fg}ByteParty Status{/cyan-fg} | Focus: ${
-        this.currentFocusIndex
+        this.focusManager.getCurrentIndex()
       } | Messages: ${
         //@ts-expect-error
         this.messageList.items.length
       } | 
-Users: ${this.statusInfo.users} | Memory: ${(
+Users: ${''
+        /** TODO: */
+      //  this.statusInfo.users
+      } | Memory: ${(
         process.memoryUsage().heapUsed /
         1024 /
         1024
@@ -913,157 +569,52 @@ Users: ${this.statusInfo.users} | Memory: ${(
 
     // Auto-switch back after 5 seconds
     setTimeout(() => {
-      this.updateStatusBar();
+      this.statusBarManager.update();
     }, 5000);
   }
 
-  private alertStatusBar(
-    color: string = "#ff6b6b",
-    duration: number = 1000
-  ): void {
-    const originalStyle = { ...this.statusBar.style };
-    let blinkCount = 0;
-    const maxBlinks = 3;
 
-    const blink = () => {
-      if (blinkCount >= maxBlinks * 2) {
-        this.statusBar.style = originalStyle;
-        this.updateStatusBar();
-        return;
-      }
 
-      // Alternate between alert color and original
-      if (blinkCount % 2 === 0) {
-        // this.statusBar.style.bg = color;
-        this.statusBar.style.fg = "white";
-      } else {
-        this.statusBar.style = originalStyle;
-      }
-
-      this.screen.render();
-      blinkCount++;
-
-      setTimeout(blink, 200);
-    };
-
-    blink();
-  }
-
-  // Focus Management Methods
-  private focusNextElement(): void {
-    if (this.isModalOpen) return; // Don't cycle focus when modal is open
-
-    this.currentFocusIndex =
-      (this.currentFocusIndex + 1) % this.focusCycle.length;
-    this.focusCycle[this.currentFocusIndex].focus();
-    this.highlightFocusedElement();
-    this.screen.render();
-  }
-
-  private focusPreviousElement(): void {
-    if (this.isModalOpen) return;
-
-    this.currentFocusIndex =
-      (this.currentFocusIndex - 1 + this.focusCycle.length) %
-      this.focusCycle.length;
-    this.focusCycle[this.currentFocusIndex].focus();
-    this.highlightFocusedElement();
-    this.screen.render();
-  }
-
-  private focusInputBox(): void {
-    this.currentFocusIndex = 0;
-    this.inputBox.focus();
-    this.highlightFocusedElement();
-    this.screen.render();
-  }
-
-  private focusMessageList(): void {
-    this.currentFocusIndex = 1;
-    this.messageList.focus();
-    this.highlightFocusedElement();
-    this.screen.render();
-  }
-
-  private focusUserList(): void {
-    this.currentFocusIndex = 2;
-    this.userList.focus();
-    this.highlightFocusedElement();
-    this.screen.render();
-  }
-
-  private focusMenuBar(): void {
-    this.currentFocusIndex = 3;
-    this.menuBar.focus();
-    this.highlightFocusedElement();
-    this.screen.render();
-  }
-
-  private highlightFocusedElement(): void {
-    // Remove highlight from all elements first
-    this.focusCycle.forEach((element) => {
-      if (element.style) {
-        element.style.border = { type: "line", fg: "#ff6b6b" };
-      }
-    });
-
-    // Highlight the currently focused element
-    const focused = this.focusCycle[this.currentFocusIndex];
-    if (focused.style) {
-      focused.style.border = { type: "line", fg: "#00ff00" }; // Green border for focus
-    }
-
-    // Update status bar with new focus
-    this.updateStatusBar();
-  }
 
   public updateConnectionStatus(
     status: "Connected" | "Connecting" | "Disconnected" | "Error",
     server?: string
   ): void {
-    this.statusInfo.connection = status;
-    if (server) {
-      this.statusInfo.connection += ` (${server})`;
-    }
-    this.updateStatusBar();
+     let fullStatus = status;
+     if (server) fullStatus += ` (${server})`;
+     this.statusBarManager.setConnectionStatus(fullStatus);
+
+     if (status === "Connected") {
+       this.statusBarManager.alert("#00ff00");
+     } else if (status === "Connecting") {
+       this.statusBarManager.alert("#ffff00");
+     } else {
+       this.statusBarManager.alert("#ff6b6b");
+     }
   }
 
-  public showTemporaryStatus(message: string, duration: number = 3000): void {
-    const originalContent = this.statusBar.getContent();
+  private updateUserCounts(): void {
+    // logic and filter will be added
+    const onlineUsers = 0;
+    const channels = 0;
+    const groups = 0;
 
-    // Show temporary message
-    this.statusBar.setContent(`{bold}${message}{/bold}`);
-    this.screen.render();
-
-    // Restore original content after duration
-    setTimeout(() => {
-      this.statusBar.setContent(originalContent);
-      this.updateStatusBar();
-    }, duration);
+    this.statusBarManager.setCounts(onlineUsers, channels, groups);
+    //@ts-expect-error
+    this.statusBarManager.setMessageCount(this.messageList.items.length);
   }
+
+
 
   private handleEscapeKey(): void {
-    if (this.isModalOpen) {
-      this.addSystemMessage("handling escaoe key");
-      this.closeActiveModal();
-    } else if (this.currentFocusIndex !== 0) {
-      // Return to input box
-      this.focusInputBox();
-    } else {
-      // If already in input box, clear it
-      this.inputBox.clearValue();
-      this.screen.render();
-    }
+     if (this.modalManager.isOpen()) {
+       this.modalManager.closeTop();
+     } else if (!this.focusManager.focusInput()) {
+       this.inputBox.clearValue();
+       this.screen.render();
+     }
   }
 
-  private closeActiveModal(): void {
-    if (this.activeModal) {
-      this.activeModal.destroy();
-      this.activeModal = null;
-      this.inputBox.focus();
-      this.screen.render();
-    }
-  }
 
   // Action Methods
   private showHelpModal(): void {
@@ -1085,8 +636,8 @@ Users: ${this.statusInfo.users} | Memory: ${(
   private showStats(): void {
     const stats = `
 {bold}Interface Statistics{/bold}
-Focus: ${this.currentFocusIndex}
-Elements: ${this.focusCycle.length}
+Focus: ${this.focusManager.getCurrentIndex()}
+Elements: ${this.focusManager.getCycleLength()}
 Messages: ${
       //@ts-expect-error
       this.messageList.items.length
@@ -1105,6 +656,7 @@ Groups: 3
   }
 
   private refreshInterface(): void {
+   this.statusBarManager.showTemporary("Refreshing interface...");
     this.addSystemMessage("Refreshing interface...");
     this.screen.realloc(); // Recalculate layout
     this.screen.render();
@@ -1288,7 +840,7 @@ Groups: 3
       if (text.startsWith("@")) {
         const username = text.substring(1);
         this.inputBox.setValue(`@${username} `);
-        this.focusInputBox();
+        this.focusManager.focusInput();
         this.screen.render();
       }
     }
@@ -1369,11 +921,6 @@ Groups: 3
       this.screen.render();
     });
 
-    modal.key(["escape"], () => {
-      modal.destroy();
-      this.inputBox.focus();
-      this.screen.render();
-    });
 
     this.screen.render();
   }
@@ -1396,36 +943,23 @@ Groups: 3
         this.refreshInterface();
         break;
       case "focus input":
-        this.focusInputBox();
+        this.focusManager.focusInput();
         break;
       case "focus messages":
-        this.focusMessageList();
+        this.focusManager.focusMessages();
         break;
       case "focus users":
-        this.focusUserList();
+        this.focusManager.focusUserList();
         break;
       case "focus menu":
-        this.focusMenuBar();
+        this.focusManager.focusMenu();
         break;
       default:
         this.addSystemMessage(`Command not found: ${command}`);
     }
   }
 
-  private showStatusMessage(message: string, duration: number = 2000): void {
-    this.showTemporaryStatus(message, duration);
-  }
-
-  private restorePreviousFocus(): void {
-    // Restore focus to where it was before modal opened
-    if (
-      this.currentFocusIndex >= 0 &&
-      this.currentFocusIndex < this.focusCycle.length
-    ) {
-      this.focusCycle[this.currentFocusIndex].focus();
-      this.screen.render();
-    }
-  }
+ 
 
   /*=======================================================*
    |                  MESSAGE  LOGS                        |
@@ -1455,8 +989,8 @@ Groups: 3
       this.inputBox.focus();
 
       // Also ensure it's highlighted in focus cycle
-      this.currentFocusIndex = 0; // Input box is index 0
-      this.highlightFocusedElement();
+      // this.currentFocusIndex = 0; // Input box is index 0
+      this.focusManager.highlightCurrent();
       this.screen.render();
 
       // Handle commands (if starts with /)
@@ -1552,6 +1086,8 @@ Groups: 3
           this.addMessage("System", msg, "#d4af37");
         }, index * 50); // 50ms delay between each queued message
       });
+
+     this.statusBarManager.setQueuedMessages(0);
     }
   }
 
@@ -1576,17 +1112,13 @@ Groups: 3
     // If UI is not initialized yet, queue the message
     if (!this.messageList) {
       this.messageQueue.push(text);
+      this.statusBarManager.setQueuedMessages(this.messageQueue.length);
       return;
     }
     this.addMessage("System", text, "#d4af37");
   }
 
-  private stopStatusUpdates(): void {
-    if (this.statusUpdateInterval) {
-      clearInterval(this.statusUpdateInterval);
-      this.statusUpdateInterval = null;
-    }
-  }
+
 
   private addMessage(
     user: string,
@@ -1595,206 +1127,11 @@ Groups: 3
   ): void {
     const timestamp = new Date().toLocaleTimeString();
     const formatted = `{${color}-fg}{bold}${user}{/bold}{/${color}-fg} [${timestamp}]: ${text}`;
-
-    this.messageLogger(formatted);
-    this.screen.render();
+    this.messageFormatter.add(formatted);
   }
 
-  private messageLogger(text: string) {
-    // Calculate max characters per line based on message box width
-    // Use 90% of the width for message content (leaving some padding)
-    /* HERE IS WHAT I HAVE REALIZED (BLESSED TEXT MODIFIERS TO NOT APPLY ON THE MAX CHARACTERS THEY ARE NOT RENDRED ON THE MESSAGELIST BUT THEIR EFFECT IS SEEN SO 
-     YOU NEED TO USE THE LENGTH OF THE PARSED TEXT TO SEE THE MAX CHARS THE SCREEN CAN TAKE, BECAUSE IF YOU COUNT THE NON PARSED TEXT YOU WILL INCLUDE TEXT MODIFIERS TOO IN THE FINAL RESULT 
-    )
-     - A messageList of width 135 can take upto 130 max characters (parsed text) on the new log
-     135 -> 130
-     current*/
-    const maxChars = Math.floor(((this.messageBoxWidth as number) * 130) / 135);
 
-    const { parsed, originalStamp } = this.decodestr(text);
 
-    const newLog = (log: string) => {
-      const newLogChar = "{green-fg}{bold}⤷{/bold}{/green-fg} ";
-      this.messageList.addItem(`${newLogChar}${log}`);
-      this.messageList.setScrollPerc(100);
-    };
-
-    const appendLog = (message: string) => {
-      // Add with proper indentation (no newLogChar for continuation lines)
-      this.messageList.addItem("   " + message);
-      this.messageList.setScrollPerc(100);
-    };
-
-    if (parsed.length > maxChars) {
-      this.handleLongLogs(
-        { parsed, originalStamp },
-        maxChars,
-        newLog,
-        appendLog
-      );
-    } else {
-      newLog(text); // Use original text with formatting
-    }
-  }
-
-  /* Blessed supports text modifiers like {bold}, to highlight or format rendered text
-     Since MessageList is a Blessed List element there is no text-wrap option for overflow text
-     We have to create a custom way of handling long text so we have to decode and filter off text
-     modifiers to calculate the length of text to render on the Message box per line
-  */
-  private decodestr(str: string): { parsed: string; originalStamp: string } {
-    let originalStamp = "";
-    let plainText = "";
-
-    // Remove formatting tags to get plain text for length calculation
-    plainText = str
-      .replace(/\{[\w#-]+\}/g, "") // Remove opening tags
-      .replace(/\{\/[\w#-]+\}/g, "") // Remove closing tags
-      .replace(/\{\/[\w#-]+-(fg|bg)\}/g, ""); // Remove color tags
-
-    // Try to extract timestamp pattern for formatting
-    const timestampMatch = str.match(/\[(\d{1,2}:\d{2}:\d{2})\s?(AM|PM)?\]/);
-
-    if (timestampMatch) {
-      // Find the portion up to and including the timestamp
-      const timestampIndex = timestampMatch.index || 0;
-      const timestampEnd = timestampIndex + timestampMatch[0].length;
-
-      // Look for the colon and space after timestamp
-      let stampEnd = timestampEnd;
-      if (str.substring(timestampEnd, timestampEnd + 2) === ": ") {
-        stampEnd += 2;
-      }
-
-      originalStamp = str.substring(0, stampEnd);
-    }
-
-    return {
-      parsed: plainText,
-      originalStamp: originalStamp,
-    };
-  }
-
-  private handleLongLogs(
-    { parsed, originalStamp }: { parsed: string; originalStamp: string },
-    maxChars: number,
-    newLog: (log: string) => void,
-    appendLog: (message: string) => void
-  ): void {
-    // Extract just the message text (after timestamp)
-    const messageText = parsed.slice(originalStamp.length).trim();
-
-    // Calculate available space for message content on the first line
-    // This accounts for the timestamp and any prefix characters in the original stamp
-    const stampPlainText = originalStamp.replace(/\{[^}]+\}/g, ""); // Remove blessed tags
-    const stampLength = stampPlainText.length;
-
-    // The prefix character "{green-fg}{bold}⤷{/bold}{/green-fg} " adds extra length
-    const newLogPrefix = "{green-fg}{bold}⤷{/bold}{/green-fg} ";
-    const prefixLength = newLogPrefix.replace(/\{[^}]+\}/g, "").length;
-
-    // Calculate available space for first line message content
-    const firstLineAvailableChars = maxChars - (prefixLength + stampLength + 1); // +1 for space
-
-    // Split message into words
-    const words = messageText.split(/\s+/);
-
-    // Build lines for the message content only
-    const messageLines: string[] = [];
-    let currentLine = "";
-
-    // First line - limited by available space
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      if (testLine.length <= firstLineAvailableChars) {
-        currentLine = testLine;
-      } else {
-        if (currentLine) {
-          messageLines.push(currentLine);
-          currentLine = word;
-        } else {
-          // Word is too long for the first line, need to split it
-          messageLines.push(word.substring(0, firstLineAvailableChars));
-          currentLine = word.substring(firstLineAvailableChars);
-        }
-      }
-    }
-
-    // Add the last line if there's content
-    if (currentLine) {
-      messageLines.push(currentLine);
-    }
-
-    // For subsequent lines (after the first), we have more space available
-    // because we don't have the timestamp prefix
-    const subsequentLineAvailableChars = maxChars - 3; // 3 spaces for indentation
-
-    // If we have more than one line, we might need to re-wrap the subsequent lines
-    const finalMessageLines: string[] = [];
-
-    if (messageLines.length > 0) {
-      // First line stays as-is (already calculated with timestamp space constraints)
-      finalMessageLines.push(messageLines[0]!);
-
-      // Process remaining lines, potentially breaking them further
-      for (let i = 1; i < messageLines.length; i++) {
-        const line = messageLines[i]!;
-
-        if (line.length <= subsequentLineAvailableChars) {
-          finalMessageLines.push(line);
-        } else {
-          // Need to break this line further
-          const subWords = line.split(/\s+/);
-          let subCurrentLine = "";
-
-          for (const word of subWords) {
-            const testSubLine = subCurrentLine
-              ? `${subCurrentLine} ${word}`
-              : word;
-            if (testSubLine.length <= subsequentLineAvailableChars) {
-              subCurrentLine = testSubLine;
-            } else {
-              if (subCurrentLine) {
-                finalMessageLines.push(subCurrentLine);
-                subCurrentLine = word;
-              } else {
-                // Word is too long, need to hard break it
-                let startIdx = 0;
-                while (startIdx < word.length) {
-                  const chunk = word.substring(
-                    startIdx,
-                    startIdx + subsequentLineAvailableChars
-                  );
-                  finalMessageLines.push(chunk);
-                  startIdx += subsequentLineAvailableChars;
-                }
-              }
-            }
-          }
-
-          if (subCurrentLine) {
-            finalMessageLines.push(subCurrentLine);
-          }
-        }
-      }
-    }
-
-    // Now log the lines with proper formatting
-    if (finalMessageLines.length > 0) {
-      // First line gets the full formatting with timestamp
-      const firstLineContent = originalStamp
-        ? `${originalStamp} ${finalMessageLines[0]}`
-        : finalMessageLines[0]!;
-
-      // Use the newLog function which adds the prefix
-      newLog(firstLineContent);
-    }
-
-    // Append remaining lines with indentation
-    for (let i = 1; i < finalMessageLines.length; i++) {
-      appendLog(finalMessageLines[i]!);
-    }
-  }
 
   /*=======================================================*
    |                     USER LIST                         |
@@ -1859,7 +1196,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-    this.closeActiveDropdown();
 
     switch (index) {
       case 3: // Start Private Chat
@@ -1891,7 +1227,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-    this.closeActiveDropdown();
 
     switch (index) {
       case 4: // Join Channel
@@ -1920,7 +1255,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-    this.closeActiveDropdown();
 
     switch (index) {
       case 4: // Open Group Chat
@@ -1949,7 +1283,6 @@ Groups: 3
     action: string,
     index: number
   ): void {
-    this.closeActiveDropdown();
 
     let message = "";
 
@@ -2006,18 +1339,16 @@ Groups: 3
   }
 
   private showUserDropdown(username: string, clickData: any): void {
-    this.closeActiveDropdown();
-
     const user = this.users.online.find((u) => u.name === `@${username}`);
     if (!user) return;
 
     // Calculate dropdown position near the click
-    this.dropdownPosition = {
+    const position = {
       x: clickData.x + 5,
       y: clickData.y,
     };
 
-    const dropdownItems = [
+    const items = [
       `{bold}${user.name} ${user.status}{/bold}`,
       `Role: ${user.role}`,
       "────────────",
@@ -2032,122 +1363,27 @@ Groups: 3
       "Close",
     ];
 
-    this.createDropdown(
-      dropdownItems,
+    this.dropdownManager.show(
+      items,
+      position,
       (selectedItem: string, index: number) => {
         this.handleUserAction(username, selectedItem, index);
       }
     );
   }
 
-  private createDropdown(
-    items: string[],
-    onSelect: (item: string, index: number) => void
-  ): void {
-    // Close any existing dropdown
-    this.closeActiveDropdown();
 
-    // Calculate dropdown size
-    const maxWidth =
-      Math.max(...items.map((item) => item.replace(/\{[^}]+\}/g, "").length)) +
-      4;
-
-    // Create dropdown list
-    this.activeDropdown = blessed.list({
-      parent: this.screen,
-      top: this.dropdownPosition.y,
-      left: this.dropdownPosition.x,
-      width: maxWidth,
-      height: items.length + 2,
-      items: items,
-      tags: true,
-      //@ts-expect-error
-      border: { type: "line", fg: "#ff6b6b" },
-      style: {
-        selected: { bg: "#ff6b6b", fg: "white" },
-        item: { fg: "#a08c76" },
-        bg: "#2a1f1d",
-      },
-      mouse: true,
-      keys: true,
-      vi: true,
-      shadow: true,
-    });
-
-    // Handle selection
-    this.activeDropdown.on("select", (item: any, index: number) => {
-      const itemText = item.getText();
-      if (itemText === "Close" || itemText.includes("────")) {
-        this.closeActiveDropdown();
-      } else {
-        onSelect(itemText, index);
-      }
-    });
-
-    // Handle Enter key
-    this.activeDropdown.key(["enter"], () => {
-      //@ts-expect-error
-      const selected = this.activeDropdown!.selected;
-      const itemText = this.activeDropdown!.getItem(selected).getText();
-      if (itemText === "Close" || itemText.includes("────")) {
-        this.closeActiveDropdown();
-      } else {
-        onSelect(itemText, selected);
-      }
-    });
-
-    // Close on escape
-    this.activeDropdown.key(["escape"], () => {
-      this.closeActiveDropdown();
-    });
-
-    // Close when clicking outside
-    this.screen.on("click", (data: any) => {
-      if (this.activeDropdown && !this.isClickInsideDropdown(data)) {
-        this.closeActiveDropdown();
-      }
-    });
-
-    this.activeDropdown.focus();
-    this.screen.render();
-  }
-
-  private isClickInsideDropdown(data: any): boolean {
-    if (!this.activeDropdown) return false;
-
-    const dropdown = this.activeDropdown;
-    const left = dropdown.left as number;
-    const top = dropdown.top as number;
-    const width = dropdown.width as number;
-    const height = dropdown.height as number;
-
-    return (
-      data.x >= left &&
-      data.x <= left + width &&
-      data.y >= top &&
-      data.y <= top + height
-    );
-  }
-
-  private closeActiveDropdown(): void {
-    if (this.activeDropdown) {
-      this.activeDropdown.destroy();
-      this.activeDropdown = null;
-      this.screen.render();
-    }
-  }
 
   private showChannelDropdown(channel: string, clickData: any): void {
-    this.closeActiveDropdown();
-
+ 
     const chan = this.users.channels.find((c) => c.name === channel);
 
-    this.dropdownPosition = {
+    const position = {
       x: clickData.x + 5,
       y: clickData.y,
     };
 
-    const dropdownItems = [
+    const items = [
       `{bold}${channel}{/bold}`,
       `Users: ${chan?.users || 0}`,
       `Topic: ${chan?.topic?.substring(0, 20) || "No topic"}...`,
@@ -2162,8 +1398,9 @@ Groups: 3
       "Close",
     ];
 
-    this.createDropdown(
-      dropdownItems,
+    this.dropdownManager.show(
+      items,
+      position,
       (selectedItem: string, index: number) => {
         this.handleChannelAction(channel, selectedItem, index);
       }
@@ -2171,16 +1408,14 @@ Groups: 3
   }
 
   private showGroupDropdown(groupName: string, clickData: any): void {
-    this.closeActiveDropdown();
-
     const group = this.users.groups.find((g) => g.name === groupName);
 
-    this.dropdownPosition = {
+    const position = {
       x: clickData.x + 5,
       y: clickData.y,
     };
 
-    const dropdownItems = [
+    const items = [
       `{bold}${groupName}{/bold}`,
       `Members: ${group?.users || 0}`,
       `Type: ${group?.private ? "Private Group" : "Public Group"}`,
@@ -2195,8 +1430,9 @@ Groups: 3
       "Close",
     ];
 
-    this.createDropdown(
-      dropdownItems,
+    this.dropdownManager.show(
+      items,
+      position,
       (selectedItem: string, index: number) => {
         this.handleGroupAction(groupName, selectedItem, index);
       }
@@ -2204,19 +1440,17 @@ Groups: 3
   }
 
   private showSectionDropdown(section: string, clickData: any): void {
-    this.closeActiveDropdown();
-
-    this.dropdownPosition = {
+    const position = {
       x: clickData.x + 5,
       y: clickData.y,
     };
 
-    let dropdownItems: string[] = [];
+    let items: string[] = [];
     let sectionType = "";
 
     if (section.includes("ONLINE USERS")) {
       sectionType = "users";
-      dropdownItems = [
+      items = [
         "{bold}Online Users Filter{/bold}",
         "────────────",
         "{#ff6b6b-fg}{bold}Show All{/bold}{/#ff6b6b-fg}",
@@ -2233,7 +1467,7 @@ Groups: 3
       ];
     } else if (section.includes("CHANNELS")) {
       sectionType = "channels";
-      dropdownItems = [
+      items = [
         "{bold}Channels Filter{/bold}",
         "────────────",
         "{#ff6b6b-fg}{bold}Show All{/bold}{/#ff6b6b-fg}",
@@ -2251,7 +1485,7 @@ Groups: 3
       ];
     } else if (section.includes("GROUPS")) {
       sectionType = "groups";
-      dropdownItems = [
+      items = [
         "{bold}Groups Filter{/bold}",
         "────────────",
         "{#ff6b6b-fg}{bold}Show All{/bold}{/#ff6b6b-fg}",
@@ -2269,8 +1503,9 @@ Groups: 3
       ];
     }
 
-    this.createDropdown(
-      dropdownItems,
+    this.dropdownManager.show(
+      items,
+      position,
       (selectedItem: string, index: number) => {
         this.handleSectionAction(sectionType, selectedItem, index);
       }
@@ -2394,11 +1629,6 @@ Groups: 3
       vi: true,
     });
 
-    modal.key(["escape", "enter"], () => {
-      modal.destroy();
-      this.inputBox.focus();
-      this.screen.render();
-    });
 
     modal.focus();
     this.screen.render();
@@ -2439,7 +1669,6 @@ Groups: 3
    *=======================================================*/
 
   private executeMenuAction(action: string, menuType: string): void {
-    this.closeActiveModal();
 
     switch (action) {
       // Key Binds actions
@@ -2454,7 +1683,7 @@ Groups: 3
         this.showStats();
         break;
       case "focusNext":
-        this.focusNextElement();
+        this.focusManager.next();
         break;
       case "quit":
         this.quitApplication();
@@ -2532,26 +1761,27 @@ Groups: 3
   }
 
   private quitApplication(): void {
-    this.stopStatusUpdates();
+    this.statusBarManager.stopUpdates();
+    this.statusBarManager.stopUpdates();
     this.addSystemMessage("Goodbye! Thanks for using ByteParty.");
     setTimeout(() => process.exit(0), 1000);
   }
 
   private connectToServer(host: string, port: number): void {
     this.updateConnectionStatus("Connecting", host);
-    this.alertStatusBar("#ff6b6b");
+    this.statusBarManager.alert("#ff6b6b");
     this.addSystemMessage(`Connecting to ${host}:${port}...`);
 
     // Simulate connection
     setTimeout(() => {
       this.updateConnectionStatus("Connected", host);
-      this.alertStatusBar("#00ff00");
+      this.statusBarManager.alert("#00ff00");
       this.addSystemMessage(`Connected to ${host}:${port}`);
     }, 2000);
   }
 
   private promptCustomServer(): void {
-    this.closeActiveModal();
+  
 
     const modal = blessed.box({
       parent: this.screen,
@@ -2630,14 +1860,8 @@ Groups: 3
     hostInput.on("submit", () => portInput.focus());
     portInput.on("submit", () => connectButton.focus());
 
-    // Handle escape
-    modal.key(["escape"], () => {
-      modal.destroy();
-      this.inputBox.focus();
-      this.screen.render();
-    });
 
-    this.activeModal = modal;
+    
     this.screen.render();
   }
 
@@ -2731,12 +1955,9 @@ Groups: 3
     width,
     height,
   }: InfoModalProps): void {
-    // close any active modal
-    this.closeActiveModal();
 
-    // modal ELEMENT and sub-elements
     //@ts-expect-error
-    this.activeModal = blessed.box({
+    const modal = blessed.box({
       parent: this.screen,
       width: width,
       height: height,
@@ -2745,25 +1966,20 @@ Groups: 3
     });
 
     const titleBox = blessed.box({
-      parent: this.activeModal,
+      parent: modal,
       content: `{bold}{#ff6b6b-fg}${title}{/#ff6b6b-fg}{/bold}`,
       ...ModalTitleBoxProps,
     });
 
     // Modal key events
-    this.activeModal.key(["escape", "enter", "space", "C-x"], () => {
-      this.closeActiveModal();
-      this.inputBox.focus();
-      this.screen.render();
+    modal.key(["escape", "enter", "space", "C-x"], () => {
+      this.modalManager.closeTop();
     });
 
-    this.activeModal.focus();
-    this.screen.render();
+    this.modalManager.open(modal);
   }
 
   private showMenuModal(menuType: MenuModalType): void {
-    // Close any existing modal
-    this.closeActiveModal();
 
     const config = this.menuConfigs[menuType as keyof typeof this.menuConfigs];
     if (!config) {
@@ -2773,14 +1989,14 @@ Groups: 3
 
     // Create modal container
     //@ts-expect-error
-    this.activeModal = blessed.box({
+    const modal = blessed.box({
       parent: this.screen,
       ...MenuModalProps,
     });
 
     // Create title
     const title = blessed.box({
-      parent: this.activeModal,
+      parent: modal,
       content: `{bold}{#ff6b6b-fg}${config.title}{/#ff6b6b-fg}{/bold}`,
       ...MenuModalTitleBoxProps,
     });
@@ -2788,7 +2004,7 @@ Groups: 3
     // Create list of options
     //@ts-expect-error
     const optionList = blessed.list({
-      parent: this.activeModal,
+      parent: modal,
       height: config.items.length + 2,
       items: config.items.map((item) => item.label),
       ...MenuModalOptionListProps,
@@ -2808,26 +2024,16 @@ Groups: 3
       this.executeMenuAction(selectedAction, menuType);
     });
 
+    // escape key for optionList
+    optionList.key(["escape"], () => this.modalManager.closeTop());
+
     // Add close instruction
     //@ts-expect-error
     const footer = blessed.box({
-      parent: this.activeModal,
+      parent: modal,
       ...ModalFooterProps,
     });
 
-    // Add ESC key handler to the modal itself
-    this.activeModal.key(["escape"], () => {
-      this.closeActiveModal();
-      this.inputBox.focus();
-      this.screen.render();
-    });
-
-    // Also add to the option list (in case it's focused)
-    optionList.key(["escape"], () => {
-      this.closeActiveModal();
-      this.inputBox.focus();
-      this.screen.render();
-    });
 
     // Position and size the modal
     const modalHeight = config.items.length + 6; // Items + title + borders + footer
@@ -2837,11 +2043,12 @@ Groups: 3
         config.title.length
       ) + 10;
 
-    this.activeModal.width = modalWidth;
-    this.activeModal.height = modalHeight;
+     modal.width = modalWidth;
+     modal.height = modalHeight;
 
+    this.modalManager.open(modal);
     // Focus the option list
     optionList.focus();
-    this.screen.render();
+    
   }
 }
