@@ -87,25 +87,38 @@ npm run dev
 
 ### Project Structure
 ```
-byteparty/
-├── src/
-│   ├── components/
-│   │   ├── UI/
-│   │   │   ├── APP_UI.ts          # Main UI controller
-│   │   │   └── ui.ts              # UI configuration
-│   │   ├── lib/
-│   │   │   └── test.ts            # Demo simulator
-│   │   └── configs.ts             # Configuration objects
-│   ├── core/
-│   │   ├── irc/
-│   │   │   ├── client.ts          # IRC client implementation
-│   │   │   ├── protocol.ts        # IRC protocol parser
-│   │   │   └── commands.ts        # IRC command handlers
-│   │   └── encryption/            # Encryption module
-│   ├── plugins/                   # Plugin system
-│   ├── themes/                    # UI themes
-│   └── utils/                     # Utility functions
-├── assets/
+```
+src
+├── animations
+│   └── BootAnimation.ts
+├── components
+│   ├── lib
+│   │   └── test.ts
+│   └── UI
+│       ├── APP_UI.ts
+│       ├── BlessedScreen.ts
+│       ├── configs.ts
+│       ├── dropdowns
+│       │   └── DropdownManager.ts
+│       ├── focus
+│       │   └── FocusManager.ts
+│       ├── messages
+│       │   └── MessageFormatter.ts
+│       ├── modals
+│       │   └── ModalManager.ts
+│       ├── status
+│       │   └── StatusBarManager.ts
+│       └── ui.ts
+├── config
+│   └── keybinds.json
+├── core
+│   └── irc
+│       └── protocol.ts
+├── events
+│   └── EventBus.ts
+├── input
+│   └── KeybindManager.ts
+├── assets
 │   ├── byteparty-demo.gif         # Demo animation
 │   └── IRC1459.pdf               # IRC specification
 ├── app.ts                         # Application entry point
@@ -303,11 +316,10 @@ We welcome contributions from the community! Here's how you can help:
 
 ### Areas Needing Contribution
 1. **IRC Protocol Implementation**
-   - Complete IRC command parsing
    - Server connection management
    - Channel and user state tracking
 
-2. **UI Enhancements**
+2. **TUI Enhancements**
    - Additional themes and color schemes
    - Improved layout responsiveness
    - Accessibility improvements
