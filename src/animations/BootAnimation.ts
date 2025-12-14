@@ -161,6 +161,7 @@ export class BootAnimation {
   private createHeader(): void {
     this.header = blessed.box({
       ...headerProps,
+   
     });
   }
 
@@ -205,12 +206,14 @@ export class BootAnimation {
 
     const blink = () => {
       if (blinks >= max) {
-        const finalContent = this.bannerLines
-          .slice(0, this.currentLine + 1)
-          .join("\n");
+        const finalContent = this.bannerLines.join("\n");
         this.header.setContent(finalContent);
         this.screen.render();
-        callback();
+
+        // Give a tiny pause so user sees the finished banner
+        setTimeout(() => {
+          callback();
+        }, 600);
         return;
       }
 
