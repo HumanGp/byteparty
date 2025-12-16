@@ -101,6 +101,7 @@ class App {
   public setupGlobalEventListeners(): void {
     // Quit request from UI
     this.eventBus.on("app:quit", () => {
+
       this.quit();
     });
 
@@ -116,11 +117,8 @@ class App {
   }
 
   public quit(): void {
-    if (!this.running) return;
-
+    this.ui.statusBarManager.stopUpdates();
     this.ui.addSystemMessage("Shutting down ByteParty... Goodbye!");
-    this.running = false;
-
     // Give UI time to show message
     setTimeout(() => {
       process.exit(0);

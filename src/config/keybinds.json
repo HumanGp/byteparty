@@ -1,27 +1,69 @@
 {
   "global": {
-    "tab": "focus:next",
-    "S-tab": "focus:previous",
-    "C-i": "focus:input",
-    "C-m": "focus:messages",
-    "C-u": "focus:users",
-    "C-b": "focus:menu",
-    "escape": "ui:escape",
-    "C-q": "app:quit",
-    "f1": "modal:help",
-    "f2": "ui:confetti",
-    "C-l": "chat:clear",
-    "/": "input:search",
-    ":": "modal:command"
+    "tab":"focus:next",
+    "S-tab":"focus:previous",
+    "escape":"ui:escape",
+    "C-i":"focus:input",
+    "C-m":"focus:messages",
+    "C-u":"focus:users",
+    "C-b":"focus:menu",
+    "C-q":"app:quit",
+    "C-h":"userlist:toggle",
+    "C-j":"menubar:toggle",
+    "C-p":"ui:screenshot",
+    "C-l":"message:clear",
+    "C-s":"statusbar:toggle",
+    "f1":"modal:help",
+    "f2":"ui:confetti",
+    "f3":"modal:stats",
+    "f5":"ui:refresh",
+    "/":"mode:search",
+    ":":"mode:command"
   },
   "inputBox": {
-    "up": "history:up",
-    "down": "history:down",
-    "C-enter": "message:send"
+    "up":"input:history-up",
+    "down":"input:history-down",
+    "C-enter":"input:message-send",
+    "C-u":"input:clear",
+    "C-a":"input:cursor-move",
+    "C-e":"input:cursor-end",
+    "@":"input:users-autocomplete",
+    "#":"input:channels-autocomplete",
+    "M-b":"input:word-navigate",
+    "M-f":"input:word-naviagte"
   },
   "messageList": {
-    "pageup": "scroll:up-large",
-    "pagedown": "scroll:down-large",
-    "r": "message:reply"
+    "pageup":"messagelist:scroll:pageup",
+    "pagedown":"messagelist:pagedown",
+    "r":"messagelist:reply",
+    "m":"messagelist:read-toggle",
+    "N":"messagelist:previous",
+    "n":"messagelist:next",
+    "/":"messagelist:search",
+    "C-c":"messagelist:copy",
+    "end":"messagelist:end",
+    "home":"messagelist:home"
+  },
+  "userList": {
+    "enter":"userlist:enter",
+    "space":"userlist:space",
+    "m":"userlist:m",
+    "i":"userlist:i",
+    "v":"userlist:v",
+    "b":"userlist:b",
+    "f":"userlist:f",
+    "g":"userlist:g",
+    "t": "userlist:t",
+    "/":"userlist:/"
+  },
+  "menuBar": {
+    "left":"menubar:left",
+    "right":"menubar:right",
+    "enter":"menubar:enter",
+    "t":"menubar:t",
+    "1":"menubar:1",
+    "2":"menubar:2",
+    "3":"menubar:3",
+    "4":"menubar:4"
   }
 }

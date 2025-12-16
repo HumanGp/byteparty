@@ -1,3 +1,4 @@
+import { EventBus } from "../../../events/EventBus";
 import { Widgets } from "blessed";
 
 /**
@@ -11,6 +12,12 @@ export class FocusManager {
 
   constructor(onFocusChange?: (element: Widgets.BlessedElement, index: number) => void) {
     this.onFocusChange = onFocusChange!;
+    EventBus.getInstance().on('focus:next', () => this.next());
+    EventBus.getInstance().on('focus:previous', () => this.previous());
+    EventBus.getInstance().on('focus:input', () => this.focusInput());
+    EventBus.getInstance().on('focus:users', () => this.focusUserList());
+    EventBus.getInstance().on('focus:menu', ()=> this.focusMenu());
+    EventBus.getInstance().on('focus:messages', ()=> this.focusMessages());
   }
 
   /**

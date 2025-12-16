@@ -27,6 +27,8 @@ import { FocusManager } from "./focus/FocusManager";
 import { ModalManager } from "./modals/ModalManager";
 import { DropdownManager } from "./dropdowns/DropdownManager";
 import { StatusBarManager } from "./status/StatusBarManager";
+import { EventBus } from "../../events/EventBus";
+import { KeybindManager } from "../../input/KeybindManager";
 
 interface InfoModalProps {
   title: string;
@@ -45,7 +47,9 @@ export class APP_UI {
   private focusManager!: FocusManager;
   private modalManager!: ModalManager;
   private dropdownManager!: DropdownManager;
-  private statusBarManager!: StatusBarManager;
+  public statusBarManager!: StatusBarManager;
+
+  private EventBus!: EventBus;
 
   // UI elements
   public screen!: Widgets.Screen;
@@ -79,6 +83,7 @@ export class APP_UI {
 
   private constructor() {
     this.screen = BlessedScreen.getInstance();
+  
   }
 
   public static getInstance() {
@@ -181,325 +186,110 @@ export class APP_UI {
   // ================= KEYBOARD SHORTCUTS =====================
 
   private setupKeyboardShortcuts(): void {
+    const keybinds = KeybindManager.getInstance();
+    const bus = EventBus.getInstance();
+
     // Global shortcuts (work anywhere)
-    this.setupGlobalShortcuts();
+    keybinds.registerGlobal(this.screen);
+    bus.on("modal:help", () => this.showHelpModal());
+    bus.on("modal:stats", () => this.showStats());
+    bus.on("ui:confetti", () => this.throwConfetti());
+    bus.on("ui:escape", () => this.handleEscapeKey());
+    bus.on("ui:refresh", () => this.refreshInterface());
+    bus.on("ui:screenshot", ()=> this.takeScreenshot());
+    bus.on("message:clear", () => this.clearChat());
+    bus.on('mode:command', () => this.enterCommandMode());
+    bus.on('mode:search', () => this.enterSearchMode());
+    bus.on('statusbar:toggle', ()=> this.toggleStatusDetails());
 
+    
     // Component-specific shortcuts
-    this.setupInputBoxShortcuts();
-    this.setupMessageListShortcuts();
-    this.setupUserListShortcuts();
-    this.setupMenuShortcuts();
-  }
 
-  // ******************* GLOBAL SHORTCUTS
-
-  private setupGlobalShortcuts(): void {
-    // Toggle status bar details mode
-    this.screen.key(["C-s"], () => {
-      this.toggleStatusDetails();
-    });
-
-    // Tab navigation between elements
-    this.screen.key(["tab"], () => {
-      this.focusManager.next();
-    });
-
-    this.screen.key(["S-tab"], () => {
-      this.focusManager.previous();
-    });
-
-    // Quick navigation shortcuts
-    this.screen.key(["C-i"], () => {
-      // Ctrl+I or Cmd+I
-      this.focusManager.focusInput();
-    });
-
-    this.screen.key(["C-m"], () => {
-      // Ctrl+M or Cmd+M
-      this.focusManager.focusMessages();
-    });
-
-    this.screen.key(["C-u"], () => {
-      // Ctrl+U or Cmd+U
-      this.focusManager.focusUserList();
-    });
-
-    this.screen.key(["C-b"], () => {
-      // Ctrl+B or Cmd+B
-      this.focusManager.focusMenu();
-    });
-
-    // Modal/Window management
-    this.screen.key(["escape"], () => {
-      this.handleEscapeKey();
-    });
-
-    // Quick actions
-    this.screen.key(["f1"], () => {
-      this.showHelpModal();
-    });
-
-    this.screen.key(["f2"], () => {
-      this.throwConfetti();
-    });
-
-    this.screen.key(["f3"], () => {
-      this.showStats();
-    });
-
-    this.screen.key(["f5"], () => {
-      this.refreshInterface();
-    });
-
-    this.screen.key(["C-l"], () => {
-      // Clear screen/chat
-      this.clearChat();
-    });
-
-    // Command mode
-    this.screen.key([":"], () => {
-      this.enterCommandMode();
-    });
-
-    // Search
-    this.screen.key(["/"], () => {
-      this.focusManager.focusInput();
-      this.inputBox.setValue("/");
-      this.screen.render();
-    });
-
-    // Quick exit with confirmation
-    this.screen.key(["C-q"], () => {
-      // this.promptQuit();
-      this.quitApplication();
-    });
-
-    // Toggle UI elements
-    this.screen.key(["C-h"], () => {
-      this.toggleUserList();
-    });
-
-    this.screen.key(["C-j"], () => {
-      this.toggleMenuBar();
-    });
-
-    // Screenshot/Log (for debugging)
-    this.screen.key(["C-p"], () => {
-      this.takeScreenshot();
-    });
-  }
-
-  // ******************* INPUTBOX ELEMENT SHORTCUTS
-
-  private setupInputBoxShortcuts(): void {
-    // Command history
-    this.inputBox.key(["up"], () => {
-      this.navigateCommandHistory("up");
-    });
-
-    this.inputBox.key(["down"], () => {
-      this.navigateCommandHistory("down");
-    });
-
-    // Quick send (alternative to Enter)
-    this.inputBox.key(["C-enter"], () => {
-      this.sendCurrentMessage();
-    });
-
-    // Clear input
-    this.inputBox.key(["C-u"], () => {
-      this.inputBox.clearValue();
-      this.screen.render();
-    });
-
-    // Autocomplete @mentions
-    this.inputBox.key(["@"], () => {
-      setTimeout(() => this.showUserAutocomplete(), 10);
-    });
-
-    // Autocomplete #channels
-    this.inputBox.key(["#"], () => {
-      setTimeout(() => this.showChannelAutocomplete(), 10);
-    });
-
-    // Move cursor
-    this.inputBox.key(["C-a"], () => {
+    // input
+    keybinds.registerForElement(this.inputBox, "inputBox");
+    bus.on('input:history-up', () => this.navigateCommandHistory('up'));
+    bus.on('input:history-down', () => this.navigateCommandHistory('down'));
+    bus.on('input:message-send', () => this.sendCurrentMessage());
+    bus.on('input:clear', () => { this.inputBox.clearValue(); this.screen.render() });
+    bus.on('input:users-autocomplete', () => { setTimeout(() => this.showUserAutocomplete(), 50) });
+    bus.on('input:channels-autocomplete', () => {setTimeout(()=> this.showChannelAutocomplete(), 10)})
+    bus.on('input:cursor-move', () => {
       // Beginning of line
       // Blessed doesn't expose cursor position directly, but we can simulate
       this.inputBox.setValue(this.inputBox.getValue());
       this.screen.render();
     });
-
-    this.inputBox.key(["C-e"], () => {
+    bus.on('input:cursor-end', () => {
       // End of line
       // Similar limitation, but we can focus end
       this.inputBox.focus();
       this.screen.render();
-    });
-
+    })
+    bus.on('input:word-navigate', (ch, key) => {
     // Word navigation (needs custom implementation)
-    this.inputBox.key(["M-b", "M-f"], (ch, key) => {
       // Alt+B, Alt+F
       // Meta key navigation for word movement
       this.handleWordNavigation(key.full);
-    });
-  }
+    })
 
-  // ******************* MESSAGELIST ELEMENT SHORTCUTS
-
-  private setupMessageListShortcuts(): void {
-    // Enhanced scrolling
-    this.messageList.key(["pageup"], () => {
+    //messageList
+    keybinds.registerForElement(this.messageList, "messageList");
+    bus.on('messagelist:pageup', () => {
       this.messageList.scroll(-10);
       this.screen.render();
     });
-
-    this.messageList.key(["pagedown"], () => {
+    bus.on('messagelist:pagedown', () => {
       this.messageList.scroll(10);
       this.screen.render();
     });
-
-    this.messageList.key(["home"], () => {
+    bus.on('messagelist:home', () => {
       this.messageList.setScrollPerc(0);
       this.screen.render();
     });
-
-    this.messageList.key(["end"], () => {
+    bus.on('messagelist:end', () => {
       this.messageList.setScrollPerc(100);
       this.screen.render();
     });
+    bus.on('messagelist:search', () => this.searchInMessages());
+    bus.on('messagelist:next', () => this.findNextInMessages());
+    bus.on('messagelist:previous', () => this.findPreviousInMessages());
+    bus.on('messagelist:copy', () => this.copySelectedMessage());
+    bus.on('messagelist:reply', () => this.replyToSelectedMessage());
+    bus.on('messagelist:read-toggle', () => this.toggleMessageRead());
 
-    // Search in messages
-    this.messageList.key(["/"], () => {
-      this.searchInMessages();
-    });
+    //userList
+    keybinds.registerForElement(this.userList, "userList");
+    bus.on('userlist:enter', () => this.handleUserListEnter());
+    bus.on('userlist:space', () => this.showUserContextMenu());
+    bus.on('userlist:m', () => this.messageSelectedUser());
+    bus.on('userlist:i', () => this.inviteSelectedUser());
+    bus.on('userlist:v', () => this.viewSelectedUserProfile());
+    bus.on('userlist:b', () => this.blockSelectedUser());
+    bus.on('userlist:f', () => this.toggleUserFilter());
+    bus.on('userlist:g', () => this.toggleGrouping());
+    bus.on('userlist:t', () => this.toggleUserList());
+    bus.on('userlist:/', () => this.filterUserList());
 
-    this.messageList.key(["n"], () => {
-      this.findNextInMessages();
-    });
-
-    this.messageList.key(["N"], () => {
-      this.findPreviousInMessages();
-    });
-
-    // Copy message
-    this.messageList.key(["C-c"], () => {
-      this.copySelectedMessage();
-    });
-
-    // Reply to selected message
-    this.messageList.key(["r"], () => {
-      this.replyToSelectedMessage();
-    });
-
-    // Mark as read/unread
-    this.messageList.key(["m"], () => {
-      this.toggleMessageRead();
-    });
-  }
-
-  // ******************* USERLIST ELEMENT SHORTCUTS
-
-  private setupUserListShortcuts(): void {
-    // Quick user actions
-    this.userList.key(["enter"], () => {
-      this.handleUserListEnter();
-    });
-
-    this.userList.key(["space"], () => {
-      this.showUserContextMenu();
-    });
-
-    this.userList.key(["m"], () => {
-      this.messageSelectedUser();
-    });
-
-    this.userList.key(["i"], () => {
-      this.inviteSelectedUser();
-    });
-
-    this.userList.key(["v"], () => {
-      this.viewSelectedUserProfile();
-    });
-
-    this.userList.key(["b"], () => {
-      this.blockSelectedUser();
-    });
-
-    // Filter users
-    this.userList.key(["/"], () => {
-      this.filterUserList();
-    });
-
-    this.userList.key(["f"], () => {
-      this.toggleUserFilter();
-    });
-
-    // Group channels by section
-    this.userList.key(["g"], () => {
-      this.toggleGrouping();
-    });
-  }
-
-  // ******************* MENU ELEMENT SHORTCUTS
-
-  private setupMenuShortcuts(): void {
-    // Menu navigation with keyboard
-    this.menuBar.key(["left"], () => {
+    //menuBar
+    keybinds.registerForElement(this.menuBar, "menuBar");
+    bus.on("menubar:enter", () => this.activateSelectedMenuItem());
+    bus.on('menubar:left', () => {
       //@ts-expect-error
       this.menuBar.left();
       this.screen.render();
     });
-
-    this.menuBar.key(["right"], () => {
+    bus.on('menubar:right', () => {
       //@ts-expect-error
       this.menuBar.right();
       this.screen.render();
     });
-
-    this.menuBar.key(["enter"], () => {
-      this.activateSelectedMenuItem();
-    });
-
-    // Quick menu access
-    this.menuBar.key(["1"], () => {
-      this.selectMenuItem(0); // Key Binds
-    });
-
-    this.menuBar.key(["2"], () => {
-      this.selectMenuItem(1); // Servers
-    });
-
-    this.menuBar.key(["3"], () => {
-      this.selectMenuItem(2); // Region
-    });
-
-    this.menuBar.key(["4"], () => {
-      this.selectMenuItem(3); // Help
-    });
+    bus.on('menubar:t', () => this.toggleMenuBar());
+    bus.on('menubar:1', () => this.selectMenuItem(0));
+    bus.on('menubar:2', () => this.selectMenuItem(1));
+    bus.on('menubar:3', () => this.selectMenuItem(2));
+    bus.on('menubar:4', () => this.selectMenuItem(4));
   }
-
-  // ====================== FOCUS MANAGEMENT ======================
-
-  private setupFocusManagement(): void {
-    // Track when modals are open
-    this.screen.on("element focus", (el: any) => {
-      // If a modal element gets focus, mark modal as open
-      if (el.parent && el.parent.type === "modal") {
-        this.isModalOpen = true;
-      }
-    });
-
-    // When modal closes, return focus to last focused element
-    this.screen.on("element blur", (el: any) => {
-      if (el.type === "modal" || (el.parent && el.parent.type === "modal")) {
-        this.isModalOpen = false;
-        setTimeout(() => {
-          this.focusManager.previous();
-        }, 50);
-      }
-    });
-  }
+ 
 
   private toggleStatusDetails(): void {
     // Toggle between simple and detailed status
@@ -551,16 +341,6 @@ Users: ${
     }
   }
 
-  private updateUserCounts(): void {
-    // logic and filter will be added
-    const onlineUsers = 0;
-    const channels = 0;
-    const groups = 0;
-
-    this.statusBarManager.setCounts(onlineUsers, channels, groups);
-    //@ts-expect-error
-    this.statusBarManager.setMessageCount(this.messageList.items.length);
-  }
 
   private handleEscapeKey(): void {
     if (this.modalManager.isOpen()) {
@@ -625,6 +405,12 @@ Groups: 3
 
   private enterCommandMode(): void {
     this.showCommandPalette();
+  }
+
+  private enterSearchMode(): void {
+    this.focusManager.focusInput();
+    this.inputBox.setValue("/");
+    this.screen.render();
   }
 
   private promptQuit(): void {
@@ -1699,7 +1485,6 @@ Groups: 3
   }
 
   private quitApplication(): void {
-    this.statusBarManager.stopUpdates();
     this.statusBarManager.stopUpdates();
     this.addSystemMessage("Goodbye! Thanks for using ByteParty.");
     setTimeout(() => process.exit(0), 1000);
