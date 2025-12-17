@@ -60,7 +60,6 @@ export class APP_UI {
   public messageBoxWidth!: number;
   public menuBar!: Widgets.ListbarElement;
   public statusBar!: Widgets.BoxElement;
-
   public userDropdown!: Widgets.ListElement;
 
   private onBootComplete: (() => void) | null = null;
@@ -83,14 +82,13 @@ export class APP_UI {
 
   private constructor() {
     this.screen = BlessedScreen.getInstance();
-  
+
   }
 
   public static getInstance() {
     if (!APP_UI.instance) {
       APP_UI.instance = new APP_UI();
     }
-
     return APP_UI.instance;
   }
 
@@ -103,10 +101,8 @@ export class APP_UI {
       this.onBootComplete = onComplete;
     }
 
-    // BootAnimation now owns the header creation and final content
     this.bootAnimation = new BootAnimation(this.screen, () => {
-      // Only now do we create the rest of the UI
-      this.initializeRestOfUI(); // ← renamed, see below
+      this._tui_init(); 
       this.setupEvents();
       this.setupKeyboardShortcuts();
       this.processMessageQueue();
@@ -121,19 +117,15 @@ export class APP_UI {
   }
 
 
-  private initializeRestOfUI(): void {
-    // DO NOT recreate header — BootAnimation already did it perfectly
-
+  private _tui_init(): void {
     //@ts-expect-error
     this.menuBar = blessed.listbar(menuProps);
-
     this.messageList = blessed.list(messageBoxProps);
     //@ts-expect-error
     this.userList = blessed.list(userListProps);
     this.statusBar = blessed.box(statusBarProps);
     //@ts-expect-error
     this.inputBox = blessed.textbox(inputBoxProps);
-
     //@ts-expect-error
     this.userDropdown = blessed.list({
       parent: this.userList,
@@ -150,33 +142,36 @@ export class APP_UI {
     // Now safe to create managers
     this.messageBoxWidth = this.messageList.width as number;
 
-    this.statusBarManager = new StatusBarManager(this.statusBar, this.screen);
+    this._managers_init_();
+  
     this.statusBarManager.startUpdates();
-
-    this.focusManager = new FocusManager((_, index) => {
-      const names = ["Input", "Messages", "User List", "Menu"];
-      this.statusBarManager.setCurrentFocus(names[index] ?? "Unknown");
-    });
-
+  
     this.focusManager.register(
       this.inputBox,
       this.messageList,
       this.userList,
       this.menuBar
     );
+
     this.focusManager.focusInput();
-
-    this.modalManager = new ModalManager(this.screen, (isOpen) => {
-      this.isModalOpen = isOpen;
-      this.statusBarManager.setModalOpen(isOpen);
-    });
-
-    this.dropdownManager = new DropdownManager(this.screen);
-    this.messageFormatter = new MessageFormatter(this.messageList);
 
     // Test messages
     this.addSystemMessage(`MessageList width: ${this.messageBoxWidth}`);
     this.addSystemMessage("Welcome to ByteParty! Animation complete.");
+  }
+
+  private _managers_init_() {
+    this.statusBarManager = new StatusBarManager(this.statusBar, this.screen);
+    this.focusManager = new FocusManager((_, index) => {
+      const names = ['Input', 'Messages', 'User List', 'Menu'];
+      this.statusBarManager.setCurrentFocus(names[index] ?? 'Unkown');
+    });
+    this.modalManager = new ModalManager(this.screen, (isOpen) => {
+      this.isModalOpen = isOpen;
+      this.statusBarManager.setModalOpen(isOpen);
+    });
+    this.dropdownManager = new DropdownManager(this.screen);
+    this.messageFormatter = new MessageFormatter(this.messageList);
   }
 
   /*=======================================================*
