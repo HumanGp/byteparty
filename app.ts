@@ -54,8 +54,7 @@ class App {
       "Type /simulate to start chat simulation with 50+ users"
     );
 
-    // Focus the input box
-    this.ui.inputBox.focus();
+   
     this.ui.screen.render();
 
     //  simulation command handler
