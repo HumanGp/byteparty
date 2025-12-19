@@ -214,7 +214,7 @@ export const modalContent_config = {
   • Middle-click to copy text
       `,
   about: `
-    {bold}{#ff6b6b-fg}ByteParty v1.0{/#ff6b6b-fg}{/bold}
+    {bold}{#d4af37-fg}ByteParty v1.0{/#d4af37-fg}{/bold}
   
     The Chat That Bytes!
   

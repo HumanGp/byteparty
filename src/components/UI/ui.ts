@@ -22,7 +22,10 @@ export const headerProps = {
   height: 8, 
   content: '',
   tags: true,
-  style: { fg: "#ff6b6b", bg: "#2a1f1d" },
+  style: {
+    fg: "#d4af37",
+    // bg: "#2a1f1d"
+  },
 };
 
 export const loadingScreenProps = {
@@ -31,15 +34,15 @@ export const loadingScreenProps = {
   width: "100%",
   height: "100%",
   content:
-    "{center}{bold}{#ff6b6b-fg}ByteParty is starting...{/#ff6b6b-fg}{/bold}{/center}",
+    "{center}{bold}{#d4af37-fg}ByteParty is starting...{/#d4af37-fg}{/bold}{/center}",
   tags: true,
-  style: { fg: "#ff6b6b", bg: "black" },
+  style: { fg: "#d4af37", bg: "black" },
 };
 
 export const messageBoxProps = {
   top: 9, 
   left: 0,
-  width: "70%",
+  width: "80%",
   height: "85%-8",
   tags: true,
   content: "",
@@ -47,14 +50,13 @@ export const messageBoxProps = {
   scrollable: true,
   scrollbar: {
     ch: "█",
-    style: { fg: "#ff6b6b", bg: "#8b4513" },
+    style: {
+      fg: "#d4af37",
+    },
   },
   style: {
     fg: "#e8d8b5",
-    bg: "#2a1f1d",
   },
-  // padding: {top: 1},
-  // border: { type: "bg",ch: '=', fg: "#ff6b6b" },
   mouse: true,
   keys: true,
   vi: true,
@@ -64,36 +66,36 @@ export const messageBoxProps = {
 
 export const userListProps = {
   top: 9,
-  left: "70%+2",
-  width: "30%-3",
+  left: "80%+2",
+  width: "20%-3",
   height: "85%-8",
-  label: " {bold}BYTE BUDDIES{/bold} ",
+  // label: " {bold}BYTE BUDDIES{/bold} ",
   tags: true,
   style: {
-    selected: { bg: "#ff6b6b", fg: "white" },
+    selected: { bg: "#daa520", fg: "#2a1f1d" },
     item: { fg: "#a08c76" },
-    scrollbar: { bg: "#ff6b6b" },
+    scrollbar: { bg: "#ffc46bff" },
   },
-  border: { type: "line", fg: "#ff6b6b" },
+
   scrollable: true,
   mouse: true,
   keys: true,
   vi: true,
   items: [
-    "{bold}{#ff6b6b-fg}=== ONLINE USERS ==={/#ff6b6b-fg}{/bold}",
+    "{bold}{#d4af37-fg}=== ONLINE USERS ==={/#d4af37-fg}{/bold}",
     "  @ByteBot",
     "  @CodeNinja",
     "  @PixelPirate",
     "  @DataDancer",
     "  @CyberByte",
     "",
-    "{bold}{#ff6b6b-fg}=== PARTY CHANNELS ==={/#ff6b6b-fg}{/bold}",
+    "{bold}{#d4af37-fg}=== PARTY CHANNELS ==={/#d4af37-fg}{/bold}",
     "  #byteparty",
     "  #retrobytes",
     "  #cyberlounge",
     "  #musicbytes",
     "",
-    "{bold}{#ff6b6b-fg}=== BYTE GROUPS ==={/#ff6b6b-fg}{/bold}",
+    "{bold}{#d4af37-fg}=== BYTE GROUPS ==={/#d4af37-fg}{/bold}",
     "  Westhetic Crew",
     "  Terminal Masters",
     "  ASCII Artists",
@@ -122,9 +124,9 @@ export const userDropdownProps = {
   height: "shrink",
   items: [], // Will be populated dynamically
   tags: true,
-  border: { type: "line", fg: "#ff6b6b" },
+  border: { type: "line", fg: "#d4af37" },
   style: {
-    selected: { bg: "#ff6b6b", fg: "white" },
+    selected: { bg: "#d4af37", fg: "#2a1f1d" },
     item: { fg: "#a08c76" },
     bg: "#2a1f1d",
   },
@@ -137,7 +139,7 @@ export const userDropdownProps = {
 
 export const menuProps = {
   style: {
-    selected: { bg: "#ff6b6b", fg: "white" },
+    selected: { bg: "#daa520", fg: "#2a1f1d" },
     item: { fg: "#a08c76" },
     bg: "#2a1f1d",
   },
@@ -168,10 +170,12 @@ export const inputBoxProps = {
   style: {
     fg: "#e8d8b5",
     bg: "#3a2a25",
-    focus: { fg: "#ff6b6b", bg: "#4a3a35" },
+    // focus: { fg: "#d4af37", bg: "#4a3a35" },
   },
-  border: { type: "line", fg: "#ff6b6b" },
-  
+  border: {
+    type: "line",
+    fg: "#d4af37", // Gold border
+  },
 };
 
 
@@ -183,17 +187,20 @@ export const inputBoxProps = {
  *=======================================================*/
  
 export const ModalProps = {
-  top: 'center',
-  left: 'center',
+  top: "center",
+  left: "center",
   tags: true,
-  border: { type: 'line', fg: '#ff6b6b' },
-  style: { fg: '#e8d8b5', bg: '#2a1f1d' },
+  border: {
+    type: "line",
+    fg: "#d4af37", // Gold border
+  },
+  style: { fg: "#e8d8b5", bg: "#2a1f1d" },
   scrollable: true,
   alwaysScroll: true,
   keys: true,
   vi: true,
   mouse: true,
-}
+};
 
 export const MenuModalProps = {
   top: "center",
@@ -202,11 +209,14 @@ export const MenuModalProps = {
   height: "shrink",
   content: "",
   tags: true,
-  border: { type: "line", fg: "#ff6b6b" },
+  border: {
+    type: "line",
+    fg: "#d4af37", // Gold border
+  },
   style: {
     fg: "#e8d8b5",
     bg: "#2a1f1d",
-    border: { fg: "#ff6b6b" },
+    border: { fg: "#d4af37" },
   },
   shadow: true,
 };
@@ -236,10 +246,13 @@ export const ModalOptionListProps = {
   vi: true,
   mouse: true,
   style: {
-    selected: { bg: "#ff6b6b", fg: "white" },
+    selected: { bg: "#d4af37", fg: "#2a1f1d" },
     item: { fg: "#a08c76" },
   },
-  border: { type: "line", fg: "#8b4513" },
+  border: {
+    type: "line",
+    fg: "#d4af37", // Gold border
+  },
 };
 
 export const ModalFooterProps = {
@@ -261,9 +274,12 @@ export const MenuModalOptionListProps = {
   vi: true,
   mouse: true,
   style: {
-    selected: { bg: "#ff6b6b", fg: "white" },
+    selected: { bg: "#d4af37", fg: "#2a1f1d" },
     item: { fg: "#a08c76" },
   },
-  border: { type: "line", fg: "#8b4513" },
+  border: {
+    type: "line",
+    fg: "#d4af37", // Gold border
+  },
 };
 

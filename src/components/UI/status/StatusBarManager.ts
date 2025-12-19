@@ -100,7 +100,7 @@ export class StatusBarManager {
 
     // Middle: Focus
     content += " | ";
-    content += `Focus: {#ff6b6b-fg}{bold}${this.currentFocusName}{/bold}{/#ff6b6b-fg}`;
+    content += `Focus: {#d4af37-fg}{bold}${this.currentFocusName}{/bold}{/#d4af37-fg}`;
 
     // Right: Stats
     content += " | ";
@@ -142,7 +142,7 @@ export class StatusBarManager {
   /**
    * Visual alert flash (e.g. on connection change)
    */
-  public alert(color: string = "#ff6b6b", blinks: number = 3): void {
+  public alert(color: string = "#d4af37", blinks: number = 3): void {
     let count = 0;
     const originalStyle = { ...this.statusBar.style };
 
