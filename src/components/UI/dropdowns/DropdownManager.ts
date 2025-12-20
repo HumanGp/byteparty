@@ -1,4 +1,4 @@
-import * as blessed from 'blessed';
+import * as blessed from "blessed";
 import { Widgets } from "blessed";
 
 /**
@@ -32,8 +32,8 @@ export class DropdownManager {
     this.onCloseCallback = onClose!;
 
     // Calculate optimal width
-    const plainItems = items.map(i => i.replace(/\{[^}]+\}/g, ""));
-    const maxWidth = Math.max(...plainItems.map(i => i.length)) + 4;
+    const plainItems = items.map((i) => i.replace(/\{[^}]+\}/g, ""));
+    const maxWidth = Math.max(...plainItems.map((i) => i.length)) + 4;
 
     // Create the dropdown list
     this.activeDropdown = blessed.list({
@@ -49,11 +49,11 @@ export class DropdownManager {
       vi: true,
       shadow: true,
       //@ts-expect-error
-      border: { type: "line", fg: "#ff6b6b" },
+      border: { type: "line", fg: "#d4af37" },
       style: {
         bg: "#2a1f1d",
         item: { fg: "#a08c76" },
-        selected: { bg: "#ff6b6b", fg: "white" },
+        selected: { bg: "#d4af37", fg: "white" },
       },
     });
 

@@ -1,3 +1,4 @@
+import { EventBus } from "../../../events/EventBus";
 import { Widgets } from "blessed";
 
 /**
@@ -5,12 +6,33 @@ import { Widgets } from "blessed";
  * highlights the active one, and tracks focus state.
  */
 export class FocusManager {
+  private static instance: FocusManager | null = null;
   private cycle: Widgets.BlessedElement[] = [];
   private currentIndex = 0;
-  private onFocusChange?: (element: Widgets.BlessedElement, index: number) => void;
+  private onFocusChange?: (
+    element: Widgets.BlessedElement,
+    index: number
+  ) => void;
 
-  constructor(onFocusChange?: (element: Widgets.BlessedElement, index: number) => void) {
+  private constructor(
+    onFocusChange?: (element: Widgets.BlessedElement, index: number) => void
+  ) {
     this.onFocusChange = onFocusChange!;
+    EventBus.getInstance().on("focus:next", () => this.next());
+    EventBus.getInstance().on("focus:previous", () => this.previous());
+    EventBus.getInstance().on("focus:input", () => this.focusInput());
+    EventBus.getInstance().on("focus:users", () => this.focusUserList());
+    EventBus.getInstance().on("focus:menu", () => this.focusMenu());
+    EventBus.getInstance().on("focus:messages", () => this.focusMessages());
+  }
+
+  public static getInstance(
+    onFocusChange?: (element: Widgets.BlessedElement, index: number) => void
+  ) {
+    if (!FocusManager.instance) {
+      FocusManager.instance = new FocusManager(onFocusChange);
+    }
+    return FocusManager.instance;
   }
 
   /**
@@ -18,7 +40,7 @@ export class FocusManager {
    * Call this once during UI initialization.
    */
   public register(...elements: Widgets.BlessedElement[]): void {
-    this.cycle = elements.filter(el => el && typeof el.focus === "function");
+    this.cycle = elements.filter((el) => el && typeof el.focus === "function");
     if (this.cycle.length > 0 && this.currentIndex >= this.cycle.length) {
       this.currentIndex = 0;
     }
@@ -40,7 +62,8 @@ export class FocusManager {
   public previous(): void {
     if (this.cycle.length === 0) return;
 
-    this.currentIndex = (this.currentIndex - 1 + this.cycle.length) % this.cycle.length;
+    this.currentIndex =
+      (this.currentIndex - 1 + this.cycle.length) % this.cycle.length;
     this.focusCurrent();
   }
 
@@ -72,10 +95,18 @@ export class FocusManager {
   /**
    * Convenience shortcuts
    */
-  public focusInput(): boolean    { return this.focusByIndex(0); }
-  public focusMessages(): boolean { return this.focusByIndex(1); }
-  public focusUserList(): boolean { return this.focusByIndex(2); }
-  public focusMenu(): boolean     { return this.focusByIndex(3); }
+  public focusInput(): boolean {
+    return this.focusByIndex(0);
+  }
+  public focusMessages(): boolean {
+    return this.focusByIndex(1);
+  }
+  public focusUserList(): boolean {
+    return this.focusByIndex(2);
+  }
+  public focusMenu(): boolean {
+    return this.focusByIndex(3);
+  }
 
   /**
    * Get current focused element
@@ -98,9 +129,9 @@ export class FocusManager {
    */
   public highlightCurrent(): void {
     // First, reset all
-    this.cycle.forEach(el => {
+    this.cycle.forEach((el) => {
       if (el.style && el.style.border) {
-        el.style.border = { type: "line", fg: "#ff6b6b" }; // default/red
+        el.style.border = { type: "line", fg: "#d4af37" }; // default/red
       }
     });
 
