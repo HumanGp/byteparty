@@ -6,6 +6,7 @@ import { Widgets } from "blessed";
  * highlights the active one, and tracks focus state.
  */
 export class FocusManager {
+  private static instance: FocusManager | null = null;
   private cycle: Widgets.BlessedElement[] = [];
   private currentIndex = 0;
   private onFocusChange?: (
@@ -13,7 +14,7 @@ export class FocusManager {
     index: number
   ) => void;
 
-  constructor(
+  private constructor(
     onFocusChange?: (element: Widgets.BlessedElement, index: number) => void
   ) {
     this.onFocusChange = onFocusChange!;
@@ -23,6 +24,15 @@ export class FocusManager {
     EventBus.getInstance().on("focus:users", () => this.focusUserList());
     EventBus.getInstance().on("focus:menu", () => this.focusMenu());
     EventBus.getInstance().on("focus:messages", () => this.focusMessages());
+  }
+
+  public static getInstance(
+    onFocusChange?: (element: Widgets.BlessedElement, index: number) => void
+  ) {
+    if (!FocusManager.instance) {
+      FocusManager.instance = new FocusManager(onFocusChange);
+    }
+    return FocusManager.instance;
   }
 
   /**
