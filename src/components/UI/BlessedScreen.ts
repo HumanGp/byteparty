@@ -15,25 +15,8 @@ export class BlessedScreen {
         dockBorders: true, 
         ignoreDockContrast: true,
       });
-
-      // Global escape to quit (handled by App class later)
-      BlessedScreen.instance.key(["C-c"], () => {
-        // We don't call process.exit here — emit event instead
-        // But for now, fallback if nothing listens
-        process.exit(0);
-      });
     }
 
     return BlessedScreen.instance;
-  }
-
-  /**
-   *  Destroy the screen (useful for tests or hot reloads)
-   */
-  public static destroy(): void {
-    if (BlessedScreen.instance) {
-      BlessedScreen.instance.destroy();
-      BlessedScreen.instance = null;
-    }
   }
 }
