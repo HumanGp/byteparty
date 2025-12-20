@@ -78,11 +78,8 @@ export class APP_UI {
   // user list data structure
   private users = { ...onlineusersConfig_props };
 
-
-
   private constructor() {
     this.screen = BlessedScreen.getInstance();
-
   }
 
   public static getInstance() {
@@ -102,7 +99,7 @@ export class APP_UI {
     }
 
     this.bootAnimation = new BootAnimation(this.screen, () => {
-      this._tui_init(); 
+      this._tui_init();
       this.setupEvents();
       this.setupKeyboardShortcuts();
       this.processMessageQueue();
@@ -116,12 +113,10 @@ export class APP_UI {
     this.bootAnimation.start();
   }
 
-
   private _tui_init(): void {
     //@ts-expect-error
     this.menuBar = blessed.listbar(menuProps);
     this.messageList = blessed.list(messageBoxProps);
-    //@ts-expect-error
     this.userList = blessed.list(userListProps);
     this.statusBar = blessed.box(statusBarProps);
     //@ts-expect-error
@@ -143,9 +138,9 @@ export class APP_UI {
     this.messageBoxWidth = this.messageList.width as number;
 
     this._managers_init_();
-  
+
     this.statusBarManager.startUpdates();
-  
+
     this.focusManager.register(
       this.inputBox,
       this.messageList,
@@ -162,9 +157,9 @@ export class APP_UI {
 
   private _managers_init_() {
     this.statusBarManager = new StatusBarManager(this.statusBar, this.screen);
-    this.focusManager = new FocusManager((_, index) => {
-      const names = ['Input', 'Messages', 'User List', 'Menu'];
-      this.statusBarManager.setCurrentFocus(names[index] ?? 'Unkown');
+    this.focusManager = FocusManager.getInstance((_, index) => {
+      const names = ["Input", "Messages", "User List", "Menu"];
+      this.statusBarManager.setCurrentFocus(names[index] ?? "Unkown");
     });
     this.modalManager = new ModalManager(this.screen, (isOpen) => {
       this.isModalOpen = isOpen;
@@ -191,23 +186,36 @@ export class APP_UI {
     bus.on("ui:confetti", () => this.throwConfetti());
     bus.on("ui:escape", () => this.handleEscapeKey());
     bus.on("ui:refresh", () => this.refreshInterface());
-    bus.on("ui:screenshot", ()=> this.takeScreenshot());
+    bus.on("ui:screenshot", () => this.takeScreenshot());
     bus.on("message:clear", () => this.clearChat());
-    bus.on('mode:command', () => this.enterCommandMode());
-    bus.on('mode:search', () => this.enterSearchMode());
-    bus.on('statusbar:toggle', ()=> this.toggleStatusDetails());
+    bus.on("mode:command", () => this.enterCommandMode());
+    bus.on("mode:search", () => this.enterSearchMode());
+    bus.on("statusbar:toggle", () => this.toggleStatusDetails());
 
-    
     // Component-specific shortcuts
 
-    // input
+   //input
     keybinds.registerForElement(this.inputBox, "inputBox");
-    bus.on('input:history-up', () => this.navigateCommandHistory('up'));
-    bus.on('input:history-down', () => this.navigateCommandHistory('down'));
-    bus.on('input:message-send', () => this.sendCurrentMessage());
-    bus.on('input:clear', () => { this.inputBox.clearValue(); this.screen.render() });
-    bus.on('input:users-autocomplete', () => { setTimeout(() => this.showUserAutocomplete(), 50) });
-    bus.on('input:channels-autocomplete', () => {setTimeout(()=> this.showChannelAutocomplete(), 10)})
+    bus.on("input:history-up", () => this.navigateCommandHistory("up"));
+    bus.on("input:history-down", () => this.navigateCommandHistory("down"));
+    bus.on("input:message-send", () => this.sendCurrentMessage());
+    bus.on("input:clear", () => {
+      this.inputBox.clearValue();
+      this.screen.render();
+    });
+    bus.on("input:users-autocomplete", () => {
+      setTimeout(() => this.showUserAutocomplete(), 50);
+    });
+    bus.on("input:channels-autocomplete", () => {
+      setTimeout(() => this.showChannelAutocomplete(), 10);
+    });
+    bus.on('input:word-navigate', (ch, key) => {
+    // Word navigation (needs custom implementation)
+      // Alt+B, Alt+F
+      // Meta key navigation for word movement
+      this.handleWordNavigation(key.full);
+    })
+        // Input
     bus.on('input:cursor-move', () => {
       // Beginning of line
       // Blessed doesn't expose cursor position directly, but we can simulate
@@ -217,74 +225,67 @@ export class APP_UI {
     bus.on('input:cursor-end', () => {
       // End of line
       // Similar limitation, but we can focus end
-      this.inputBox.focus();
+      this.focusManager.focusInput();
       this.screen.render();
-    })
-    bus.on('input:word-navigate', (ch, key) => {
-    // Word navigation (needs custom implementation)
-      // Alt+B, Alt+F
-      // Meta key navigation for word movement
-      this.handleWordNavigation(key.full);
-    })
+    })    
 
     //messageList
     keybinds.registerForElement(this.messageList, "messageList");
-    bus.on('messagelist:pageup', () => {
+    bus.on("messagelist:pageup", () => {
       this.messageList.scroll(-10);
       this.screen.render();
     });
-    bus.on('messagelist:pagedown', () => {
+    bus.on("messagelist:pagedown", () => {
       this.messageList.scroll(10);
       this.screen.render();
     });
-    bus.on('messagelist:home', () => {
+    bus.on("messagelist:home", () => {
       this.messageList.setScrollPerc(0);
       this.screen.render();
     });
-    bus.on('messagelist:end', () => {
+    bus.on("messagelist:end", () => {
       this.messageList.setScrollPerc(100);
       this.screen.render();
     });
-    bus.on('messagelist:search', () => this.searchInMessages());
-    bus.on('messagelist:next', () => this.findNextInMessages());
-    bus.on('messagelist:previous', () => this.findPreviousInMessages());
-    bus.on('messagelist:copy', () => this.copySelectedMessage());
-    bus.on('messagelist:reply', () => this.replyToSelectedMessage());
-    bus.on('messagelist:read-toggle', () => this.toggleMessageRead());
+    bus.on("messagelist:search", () => this.searchInMessages());
+    bus.on("messagelist:next", () => this.findNextInMessages());
+    bus.on("messagelist:previous", () => this.findPreviousInMessages());
+    bus.on("messagelist:copy", () => this.copySelectedMessage());
+    bus.on("messagelist:reply", () => this.replyToSelectedMessage());
+    bus.on("messagelist:read-toggle", () => this.toggleMessageRead());
 
     //userList
     keybinds.registerForElement(this.userList, "userList");
-    bus.on('userlist:enter', () => this.handleUserListEnter());
-    bus.on('userlist:space', () => this.showUserContextMenu());
-    bus.on('userlist:m', () => this.messageSelectedUser());
-    bus.on('userlist:i', () => this.inviteSelectedUser());
-    bus.on('userlist:v', () => this.viewSelectedUserProfile());
-    bus.on('userlist:b', () => this.blockSelectedUser());
-    bus.on('userlist:f', () => this.toggleUserFilter());
-    bus.on('userlist:g', () => this.toggleGrouping());
-    bus.on('userlist:t', () => this.toggleUserList());
-    bus.on('userlist:/', () => this.filterUserList());
+    bus.on("userlist:enter", () => this.handleUserListEnter());
+    bus.on("userlist:space", () => this.showUserContextMenu());
+    bus.on("userlist:m", () => this.messageSelectedUser());
+    bus.on("userlist:i", () => this.inviteSelectedUser());
+    bus.on("userlist:v", () => this.viewSelectedUserProfile());
+    bus.on("userlist:b", () => this.blockSelectedUser());
+    bus.on("userlist:f", () => this.toggleUserFilter());
+    bus.on("userlist:g", () => this.toggleGrouping());
+    bus.on("userlist:t", () => this.toggleUserList());
+    bus.on("userlist:/", () => this.filterUserList());
 
     //menuBar
     keybinds.registerForElement(this.menuBar, "menuBar");
     bus.on("menubar:enter", () => this.activateSelectedMenuItem());
-    bus.on('menubar:left', () => {
+    bus.on("menubar:left", () => {
       //@ts-expect-error
       this.menuBar.left();
       this.screen.render();
     });
-    bus.on('menubar:right', () => {
+    bus.on("menubar:right", () => {
       //@ts-expect-error
       this.menuBar.right();
       this.screen.render();
     });
-    bus.on('menubar:t', () => this.toggleMenuBar());
-    bus.on('menubar:1', () => this.selectMenuItem(0));
-    bus.on('menubar:2', () => this.selectMenuItem(1));
-    bus.on('menubar:3', () => this.selectMenuItem(2));
-    bus.on('menubar:4', () => this.selectMenuItem(4));
+    bus.on("menubar:t", () => this.toggleMenuBar());
+    bus.on("menubar:1", () => this.selectMenuItem(0));
+    bus.on("menubar:2", () => this.selectMenuItem(1));
+    bus.on("menubar:3", () => this.selectMenuItem(2));
+    bus.on("menubar:4", () => this.selectMenuItem(4));
   }
- 
 
   private toggleStatusDetails(): void {
     // Toggle between simple and detailed status
@@ -332,10 +333,9 @@ Users: ${
     } else if (status === "Connecting") {
       this.statusBarManager.alert("#ffff00");
     } else {
-      this.statusBarManager.alert("#ff6b6b");
+      this.statusBarManager.alert("#d4af37");
     }
   }
-
 
   private handleEscapeKey(): void {
     if (this.modalManager.isOpen()) {
@@ -418,7 +418,8 @@ Groups: 3
       content: "Are you sure you want to quit ByteParty?",
       tags: true,
       //@ts-expect-error
-      border: { type: "line", fg: "#ff6b6b" },
+      border: {type: "line",fg: "#d4af37", // Gold border
+      },
       style: {
         fg: "#e8d8b5",
         bg: "#2a1f1d",
@@ -430,7 +431,7 @@ Groups: 3
       if (response) {
         this.quitApplication();
       }
-      this.inputBox.focus();
+      this.focusManager.focusInput();
       this.screen.render();
     });
 
@@ -544,7 +545,7 @@ Groups: 3
     const selected = this.messageList.selected;
     if (selected >= 0) {
       this.inputBox.setValue("> ");
-      this.inputBox.focus();
+      this.focusManager.focusInput();
       this.screen.render();
     }
   }
@@ -643,7 +644,8 @@ Groups: 3
       label: " Command Palette ",
       tags: true,
       //@ts-expect-error
-      border: { type: "line", fg: "#ff6b6b" },
+      border: {type: "line",fg: "#d4af37", // Gold border
+      },
       style: {
         fg: "#e8d8b5",
         bg: "#2a1f1d",
@@ -653,7 +655,7 @@ Groups: 3
     modal.focus();
     modal.on("submit", (value: string) => {
       this.executeCommand(value);
-      this.inputBox.focus();
+      this.focusManager.focusInput();
       this.screen.render();
     });
 
@@ -719,7 +721,7 @@ Groups: 3
       // Clear input
       this.inputBox.clearValue();
       // Re-focus the input box
-      this.inputBox.focus();
+      this.focusManager.focusInput();
 
       // Also ensure it's highlighted in focus cycle
       // this.currentFocusIndex = 0; // Input box is index 0
@@ -945,7 +947,7 @@ Groups: 3
         break;
     }
 
-    this.inputBox.focus();
+    this.focusManager.focusInput();
     this.screen.render();
   }
 
@@ -972,7 +974,7 @@ Groups: 3
         break;
     }
 
-    this.inputBox.focus();
+    this.focusManager.focusInput();
     this.screen.render();
   }
 
@@ -999,7 +1001,7 @@ Groups: 3
         break;
     }
 
-    this.inputBox.focus();
+    this.focusManager.focusInput();
     this.screen.render();
   }
 
@@ -1045,7 +1047,7 @@ Groups: 3
       this.addSystemMessage(message);
     }
 
-    this.inputBox.focus();
+    this.focusManager.focusInput();
     this.screen.render();
   }
 
@@ -1076,7 +1078,7 @@ Groups: 3
       `{bold}${user.name} ${user.status}{/bold}`,
       `Role: ${user.role}`,
       "────────────",
-      "{#ff6b6b-fg}{bold}Start Private Chat{/bold}{/#ff6b6b-fg}",
+      "{#d4af37-fg}{bold}Start Private Chat{/bold}{/#d4af37-fg}",
       "Send Message",
       "Invite to Channel",
       "View Profile",
@@ -1109,7 +1111,7 @@ Groups: 3
       `Users: ${chan?.users || 0}`,
       `Topic: ${chan?.topic?.substring(0, 20) || "No topic"}...`,
       "────────────",
-      "{#ff6b6b-fg}{bold}Join Channel{/bold}{/#ff6b6b-fg}",
+      "{#d4af37-fg}{bold}Join Channel{/bold}{/#d4af37-fg}",
       "View Members",
       "Set as Active",
       "────────────",
@@ -1141,7 +1143,7 @@ Groups: 3
       `Members: ${group?.users || 0}`,
       `Type: ${group?.private ? "Private Group" : "Public Group"}`,
       "────────────",
-      "{#ff6b6b-fg}{bold}Open Group Chat{/bold}{/#ff6b6b-fg}",
+      "{#d4af37-fg}{bold}Open Group Chat{/bold}{/#d4af37-fg}",
       "View Members",
       "Invite Friends",
       "────────────",
@@ -1174,7 +1176,7 @@ Groups: 3
       items = [
         "{bold}Online Users Filter{/bold}",
         "────────────",
-        "{#ff6b6b-fg}{bold}Show All{/bold}{/#ff6b6b-fg}",
+        "{#d4af37-fg}{bold}Show All{/bold}{/#d4af37-fg}",
         "Show Only Friends",
         "Show Only Moderators",
         "Show Only Bots",
@@ -1191,7 +1193,7 @@ Groups: 3
       items = [
         "{bold}Channels Filter{/bold}",
         "────────────",
-        "{#ff6b6b-fg}{bold}Show All{/bold}{/#ff6b6b-fg}",
+        "{#d4af37-fg}{bold}Show All{/bold}{/#d4af37-fg}",
         "Show Only Joined",
         "Show Popular (>20 users)",
         "Show by Topic",
@@ -1209,7 +1211,7 @@ Groups: 3
       items = [
         "{bold}Groups Filter{/bold}",
         "────────────",
-        "{#ff6b6b-fg}{bold}Show All{/bold}{/#ff6b6b-fg}",
+        "{#d4af37-fg}{bold}Show All{/bold}{/#d4af37-fg}",
         "Show Only My Groups",
         "Show Public Groups",
         "Show Private Groups",
@@ -1236,12 +1238,12 @@ Groups: 3
   // Action implementations
   private startPrivateChat(username: string): void {
     this.addSystemMessage(`Starting private chat with ${username}`);
-    this.inputBox.focus();
+    this.focusManager.focusInput();
   }
 
   private promptMessageToUser(username: string): void {
     this.inputBox.setValue(`/msg @${username} `);
-    this.inputBox.focus();
+    this.focusManager.focusInput();
     this.screen.render();
   }
 
@@ -1322,7 +1324,8 @@ Groups: 3
   private promptCreateNew(sectionType: string): void {
     const typeName = sectionType.slice(0, -1); // Remove 's'
     this.inputBox.setValue(`/create${typeName} `);
-    this.inputBox.focus();
+        this.focusManager.focusInput();
+
     this.screen.render();
   }
 
@@ -1341,7 +1344,8 @@ Groups: 3
       content: content,
       tags: true,
       //@ts-expect-error
-      border: { type: "line", fg: "#ff6b6b" },
+      border: {type: "line",fg: "#d4af37", // Gold border
+      },
       style: {
         fg: "#e8d8b5",
         bg: "#2a1f1d",
@@ -1475,7 +1479,7 @@ Groups: 3
         this.addSystemMessage(`Action ${action} not implemented`);
     }
 
-    this.inputBox.focus();
+    this.focusManager.focusInput();
     this.screen.render();
   }
 
@@ -1487,7 +1491,7 @@ Groups: 3
 
   private connectToServer(host: string, port: number): void {
     this.updateConnectionStatus("Connecting", host);
-    this.statusBarManager.alert("#ff6b6b");
+    this.statusBarManager.alert("#d4af37");
     this.addSystemMessage(`Connecting to ${host}:${port}...`);
 
     // Simulate connection
@@ -1508,7 +1512,8 @@ Groups: 3
       content: "{bold}Custom Server Setup{/bold}",
       tags: true,
       //@ts-expect-error
-      border: { type: "line", fg: "#ff6b6b" },
+      border: {type: "line",  fg: "#d4af37", // Gold border
+      },
       style: {
         fg: "#e8d8b5",
         bg: "#2a1f1d",
@@ -1526,7 +1531,7 @@ Groups: 3
       style: {
         fg: "white",
         bg: "#4a3a35",
-        focus: { fg: "#ff6b6b", bg: "#5a4a45" },
+        focus: { fg: "#d4af37", bg: "#5a4a45" },
       },
     });
 
@@ -1541,7 +1546,7 @@ Groups: 3
       style: {
         fg: "white",
         bg: "#4a3a35",
-        focus: { fg: "#ff6b6b", bg: "#5a4a45" },
+        focus: { fg: "#d4af37", bg: "#5a4a45" },
       },
     });
 
@@ -1555,8 +1560,8 @@ Groups: 3
       tags: true,
       style: {
         fg: "white",
-        bg: "#ff6b6b",
-        focus: { fg: "#ff6b6b", bg: "white" },
+        bg: "#d4af37",
+        focus: { fg: "#d4af37", bg: "white" },
       },
     });
 
@@ -1680,7 +1685,7 @@ Groups: 3
 
     const titleBox = blessed.box({
       parent: modal,
-      content: `{bold}{#ff6b6b-fg}${title}{/#ff6b6b-fg}{/bold}`,
+      content: `{bold}{#d4af37-fg}${title}{/#d4af37-fg}{/bold}`,
       ...ModalTitleBoxProps,
     });
 
@@ -1709,7 +1714,7 @@ Groups: 3
     // Create title
     const title = blessed.box({
       parent: modal,
-      content: `{bold}{#ff6b6b-fg}${config.title}{/#ff6b6b-fg}{/bold}`,
+      content: `{bold}{#d4af37-fg}${config.title}{/#d4af37-fg}{/bold}`,
       ...MenuModalTitleBoxProps,
     });
 
