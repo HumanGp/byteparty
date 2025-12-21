@@ -86,7 +86,7 @@ npm run dev
 ## 🏗 Architecture
 
 ### Project Structure
-```
+
 ```
 src
 ├── animations

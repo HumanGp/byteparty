@@ -16,6 +16,7 @@ import {
   ModalProps,
   ModalTitleBoxProps,
   statusBarProps,
+  tabBarProps,
   userDropdownProps,
   userListProps,
 } from "./ui";
@@ -29,6 +30,7 @@ import { DropdownManager } from "./dropdowns/DropdownManager";
 import { StatusBarManager } from "./status/StatusBarManager";
 import { EventBus } from "../../events/EventBus";
 import { KeybindManager } from "../../input/KeybindManager";
+import { TabManager } from "./tabs/TabManager";
 
 interface InfoModalProps {
   title: string;
@@ -47,7 +49,9 @@ export class APP_UI {
   private focusManager!: FocusManager;
   private modalManager!: ModalManager;
   private dropdownManager!: DropdownManager;
+  private tabManager!: TabManager;
   public statusBarManager!: StatusBarManager;
+
 
   private EventBus!: EventBus;
 
@@ -61,6 +65,7 @@ export class APP_UI {
   public menuBar!: Widgets.ListbarElement;
   public statusBar!: Widgets.BoxElement;
   public userDropdown!: Widgets.ListElement;
+  public tabBar!: Widgets.BoxElement;
 
   private onBootComplete: (() => void) | null = null;
 
@@ -127,12 +132,18 @@ export class APP_UI {
       ...userDropdownProps,
     });
 
+    this.tabBar = blessed.box({
+      parent: this.screen,
+      ...tabBarProps
+    });
+
     // Append everything — header is already appended by BootAnimation
     this.screen.append(this.messageList);
     this.screen.append(this.userList);
     this.screen.append(this.inputBox);
     this.screen.append(this.menuBar);
     this.screen.append(this.statusBar);
+    this.screen.append(this.tabBar);
 
     // Now safe to create managers
     this.messageBoxWidth = this.messageList.width as number;
@@ -149,6 +160,7 @@ export class APP_UI {
     );
 
     this.focusManager.focusInput();
+    
 
     // Test messages
     this.addSystemMessage(`MessageList width: ${this.messageBoxWidth}`);
@@ -167,7 +179,10 @@ export class APP_UI {
     });
     this.dropdownManager = new DropdownManager(this.screen);
     this.messageFormatter = new MessageFormatter(this.messageList);
+    this.tabManager = TabManager.getInstance(this.screen, this.messageList, this.userList, this.tabBar);
+    this.screen.enableMouse();
   }
+
 
   /*=======================================================*
    |       KEYBOARD AND  ELEMENT FOCUS MANAGEMENT         |
@@ -1237,6 +1252,7 @@ Groups: 3
 
   // Action implementations
   private startPrivateChat(username: string): void {
+    this.tabManager.openPrivateChat(username);
     this.addSystemMessage(`Starting private chat with ${username}`);
     this.focusManager.focusInput();
   }
@@ -1278,6 +1294,7 @@ Groups: 3
   }
 
   private joinChannel(channel: string): void {
+    this.tabManager.openChannel(channel);
     this.addSystemMessage(`Joined ${channel}`);
   }
 
@@ -1300,6 +1317,7 @@ Groups: 3
   }
 
   private openGroupChat(groupName: string): void {
+    // this.tabManager.;
     this.addSystemMessage(`Opened group chat: ${groupName}`);
   }
 
