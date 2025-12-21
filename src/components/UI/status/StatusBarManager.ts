@@ -154,7 +154,7 @@ export class StatusBarManager {
       }
 
       if (count % 2 === 0) {
-        this.statusBar.style.fg = "white";
+        this.statusBar.style.fg = "#2a1f1d";
         this.statusBar.style.bg = color;
       } else {
         this.statusBar.style = originalStyle;

@@ -40,7 +40,7 @@ export const loadingScreenProps = {
 };
 
 export const messageBoxProps = {
-  top: 9, 
+  top: 10, 
   left: 0,
   width: "80%",
   height: "85%-8",
@@ -65,7 +65,7 @@ export const messageBoxProps = {
 };
 
 export const userListProps = {
-  top: 9,
+  top: 10,
   left: "80%+2",
   width: "20%-3",
   height: "85%-8",
@@ -101,6 +101,7 @@ export const userListProps = {
     "  ASCII Artists",
   ],
 };
+
 export const statusBarProps = {
   top: "89%",
   height: 1,
@@ -108,8 +109,8 @@ export const statusBarProps = {
   width: "100%",
 
   style: {
-    fg: "#a08c76",
-    bg: "#2a1f1d",
+    fg: "#2a1f1d",
+  
     bold: true,
   },
   content: "",
@@ -178,6 +179,22 @@ export const inputBoxProps = {
   },
 };
 
+export const tabBarProps = {
+  top: 9,
+  left: 0,
+  height: 1,
+  width: "100%",
+  tags: true,
+  mouse: true,
+  clickable: true,
+  style: {
+    bg: "#1a1210",
+    fg: "#e8d8b5",
+    hover: {
+      bg: "#2a201d",
+    },
+  },
+};
 
 
 
