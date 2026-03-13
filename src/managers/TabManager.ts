@@ -1,4 +1,4 @@
-import { EventBus } from "../../../events/EventBus";
+import { EventBus } from "../events/EventBus";
 import { Widgets } from "blessed";
 
 type TabType = "private" | "groups" | "channels" | "server";
@@ -110,7 +110,7 @@ export class TabManager {
         type: "channels",
         label: channel,
         messages: [`Now viewing ${channel}`],
-        userListItems: [`${channel} (42 users)`], 
+        userListItems: [`${channel} (42 users)`],
         unreadCount: 0,
       });
     }
@@ -178,7 +178,7 @@ export class TabManager {
       const hoverX = data.x;
       for (const segment of this.tabSegments) {
         if (hoverX >= segment.start && hoverX < segment.end) {
-         //styles update
+          //styles update
           break;
         }
       }

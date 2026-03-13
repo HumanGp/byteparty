@@ -22,15 +22,17 @@ import {
 } from "./ui";
 
 import { BlessedScreen } from "./BlessedScreen";
-import { BootAnimation } from "../../animations/BootAnimation";
-import { MessageFormatter } from "./messages/MessageFormatter";
-import { FocusManager } from "./focus/FocusManager";
-import { ModalManager } from "./modals/ModalManager";
-import { DropdownManager } from "./dropdowns/DropdownManager";
-import { StatusBarManager } from "./status/StatusBarManager";
+import { BootAnimation } from "../animations/BootAnimation";
+import { MessageFormatter } from "../../utils/MessageFormatter";
+import { FocusManager } from "../../managers/FocusManager";
+import { ModalManager } from "../../managers/ModalManager";
+import { DropdownManager } from "../../managers/DropdownManager";
+import { StatusBarManager } from "../../managers/StatusBarManager";
 import { EventBus } from "../../events/EventBus";
-import { KeybindManager } from "../../input/KeybindManager";
-import { TabManager } from "./tabs/TabManager";
+import { KeybindManager } from "../../managers/KeybindManager";
+import { TabManager } from "../../managers/TabManager";
+import { LayoutManager } from "../../managers/LayoutManager";
+import { createIndexLayout } from "../Layouts/IndexLayout";
 
 interface InfoModalProps {
   title: string;
@@ -50,6 +52,7 @@ export class APP_UI {
   private modalManager!: ModalManager;
   private dropdownManager!: DropdownManager;
   private tabManager!: TabManager;
+  private layoutManager!: LayoutManager;
   public statusBarManager!: StatusBarManager;
 
 
@@ -104,10 +107,11 @@ export class APP_UI {
     }
 
     this.bootAnimation = new BootAnimation(this.screen, () => {
-      this._tui_init();
+      // this._tui_init();
+      this._hub_init_();
       this.setupEvents();
       this.setupKeyboardShortcuts();
-      this.processMessageQueue();
+      //this.processMessageQueue();
 
       if (this.onBootComplete) {
         this.onBootComplete();
@@ -160,7 +164,7 @@ export class APP_UI {
     );
 
     this.focusManager.focusInput();
-    
+
 
     // Test messages
     this.addSystemMessage(`MessageList width: ${this.messageBoxWidth}`);
@@ -183,6 +187,26 @@ export class APP_UI {
     this.screen.enableMouse();
   }
 
+  /*--------------------------------------------------------
+   * I have an Idea of breaking down the app UI state into different states
+   *  - we will have boot state, where the app is booting
+   *  - next follows a welcome & getting started page
+   *  - after choosing an option UI navigate to the selected category section
+   *  -------------------------------------------------------*/
+
+  private _hub_init_(): void {
+    // create layout manager first 
+    this.layoutManager = new LayoutManager(this.screen);
+
+    // Register all layouts
+    this.layoutManager.registerLayouts('index', createIndexLayout);
+
+    // Switch to index (shows index, hides everything else)
+    this.layoutManager.switchTo('index');
+
+    // initialize other managers but they'llbe drmant until needed
+    this._managers_init_();
+  }
 
   /*=======================================================*
    |       KEYBOARD AND  ELEMENT FOCUS MANAGEMENT         |
@@ -209,7 +233,7 @@ export class APP_UI {
 
     // Component-specific shortcuts
 
-   //input
+    //input
     keybinds.registerForElement(this.inputBox, "inputBox");
     bus.on("input:history-up", () => this.navigateCommandHistory("up"));
     bus.on("input:history-down", () => this.navigateCommandHistory("down"));
@@ -225,12 +249,12 @@ export class APP_UI {
       setTimeout(() => this.showChannelAutocomplete(), 10);
     });
     bus.on('input:word-navigate', (ch, key) => {
-    // Word navigation (needs custom implementation)
+      // Word navigation (needs custom implementation)
       // Alt+B, Alt+F
       // Meta key navigation for word movement
       this.handleWordNavigation(key.full);
     })
-        // Input
+    // Input
     bus.on('input:cursor-move', () => {
       // Beginning of line
       // Blessed doesn't expose cursor position directly, but we can simulate
@@ -242,7 +266,7 @@ export class APP_UI {
       // Similar limitation, but we can focus end
       this.focusManager.focusInput();
       this.screen.render();
-    })    
+    })
 
     //messageList
     keybinds.registerForElement(this.messageList, "messageList");
@@ -315,12 +339,11 @@ export class APP_UI {
 {cyan-fg}ByteParty Status{/cyan-fg} | Focus: ${this.focusManager.getCurrentIndex()} | Messages: ${
         //@ts-expect-error
         this.messageList.items.length
-      } | 
-Users: ${
-        ""
+        } | 
+Users: ${""
         /** TODO: */
         //  this.statusInfo.users
-      } | Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB
+        } | Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB
     `
         .trim()
         .replace(/\n/g, " | ");
@@ -386,7 +409,7 @@ Elements: ${this.focusManager.getCycleLength()}
 Messages: ${
       //@ts-expect-error
       this.messageList.items.length
-    }
+      }
 Users: 5
 Channels: 4
 Groups: 3
@@ -432,8 +455,9 @@ Groups: 3
       height: 8,
       content: "Are you sure you want to quit ByteParty?",
       tags: true,
-      //@ts-expect-error
-      border: {type: "line",fg: "#d4af37", // Gold border
+      border: {
+        //@ts-expect-error: type incompatibility string & number 
+        type: "line", fg: "#d4af37", // Gold border
       },
       style: {
         fg: "#e8d8b5",
@@ -658,8 +682,9 @@ Groups: 3
       height: 5,
       label: " Command Palette ",
       tags: true,
-      //@ts-expect-error
-      border: {type: "line",fg: "#d4af37", // Gold border
+      border: {
+        //@ts-expect-error: fg type incompatibility
+        type: "line", fg: "#d4af37", // Gold border
       },
       style: {
         fg: "#e8d8b5",
@@ -1342,7 +1367,7 @@ Groups: 3
   private promptCreateNew(sectionType: string): void {
     const typeName = sectionType.slice(0, -1); // Remove 's'
     this.inputBox.setValue(`/create${typeName} `);
-        this.focusManager.focusInput();
+    this.focusManager.focusInput();
 
     this.screen.render();
   }
@@ -1361,8 +1386,9 @@ Groups: 3
       height: height,
       content: content,
       tags: true,
-      //@ts-expect-error
-      border: {type: "line",fg: "#d4af37", // Gold border
+      border: {
+        //@ts-expect-error: fg type incompatibility string and number
+        type: "line", fg: "#d4af37", // Gold border
       },
       style: {
         fg: "#e8d8b5",
@@ -1435,19 +1461,19 @@ Groups: 3
 
       // Server actions
       case "connectLibera":
-        this.connectToServer("irc.libera.chat", 6667);
+        this.connectToServer("irc.libera.chat", 6667, 'my_nick', 'channel');
         break;
       case "connectFreenode":
-        this.connectToServer("irc.freenode.net", 6667);
+        this.connectToServer("irc.freenode.net", 6667, 'my_nick', 'channel');
         break;
       case "connectIRCNet":
-        this.connectToServer("irc.ircnet.com", 6667);
+        this.connectToServer("irc.ircnet.com", 6667, 'my_nick', 'channel');
         break;
       case "connectEFNet":
-        this.connectToServer("irc.efnet.org", 6667);
+        this.connectToServer("irc.efnet.org", 6667, 'my_nick', 'channel');
         break;
       case "connectQuakeNet":
-        this.connectToServer("irc.quakenet.org", 6667);
+        this.connectToServer("irc.quakenet.org", 6667, 'my_nick', 'channel');
         break;
       case "addCustomServer":
         this.promptCustomServer();
@@ -1507,7 +1533,7 @@ Groups: 3
     setTimeout(() => process.exit(0), 1000);
   }
 
-  private connectToServer(host: string, port: number): void {
+  connectToServer(host: string, port: number, nick: string, channel: string): void {
     this.updateConnectionStatus("Connecting", host);
     this.statusBarManager.alert("#d4af37");
     this.addSystemMessage(`Connecting to ${host}:${port}...`);
@@ -1529,8 +1555,9 @@ Groups: 3
       height: 8,
       content: "{bold}Custom Server Setup{/bold}",
       tags: true,
-      //@ts-expect-error
-      border: {type: "line",  fg: "#d4af37", // Gold border
+      border: {
+        //@ts-expect-error: fg type incompatibility 'string' and 'number'
+        type: "line", fg: "#d4af37", // Gold border
       },
       style: {
         fg: "#e8d8b5",
@@ -1591,7 +1618,7 @@ Groups: 3
       const port = parseInt(portInput.getValue()) || 6667;
 
       modal.destroy();
-      this.connectToServer(host, port);
+      this.connectToServer(host, port, 'my_nick', 'channel');
       this.screen.render();
     });
 

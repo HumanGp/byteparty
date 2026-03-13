@@ -1,6 +1,6 @@
 import * as blessed from "blessed";
 import { Widgets } from "blessed";
-import { headerProps, loadingScreenProps } from "../components/UI/ui";
+import { headerProps, loadingScreenProps } from "../UI/ui";
 
 export class BootAnimation {
   private screen: Widgets.Screen;
@@ -142,10 +142,10 @@ export class BootAnimation {
       const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return res
         ? {
-            r: parseInt(res[1]!, 16),
-            g: parseInt(res[2]!, 16),
-            b: parseInt(res[3]!, 16),
-          }
+          r: parseInt(res[1]!, 16),
+          g: parseInt(res[2]!, 16),
+          b: parseInt(res[3]!, 16),
+        }
         : { r: 0, g: 0, b: 0 };
     };
 
@@ -161,7 +161,7 @@ export class BootAnimation {
   private createHeader(): void {
     this.header = blessed.box({
       ...headerProps,
-   
+
     });
   }
 
