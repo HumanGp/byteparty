@@ -11,6 +11,9 @@ build/
 .env.local
 .env.*.local
 
+# branch docs
+branch.md
+
 # Logs
 *.log
 npm-debug.log*
