@@ -87,7 +87,7 @@ npm run dev
 
 ### Project Structure
 
-```
+```txt
 src
 ├── animations
 │   └── BootAnimation.ts
