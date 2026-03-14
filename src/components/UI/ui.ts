@@ -2,24 +2,26 @@
  |             BYTEPARTY UI COMPONENTS                   |
  *=======================================================*/
 
+//=================== main components ===================\\
+
 export const screenProps = {
   smartCSR: true,
   title: "ByteParty - Westhetic IRC",
   cursor: {
     artificial: true,
-    shape: "block", 
+    shape: "block",
     blink: true,
     color: ''
   },
   fullUnicode: true,
-  style: {bg: 'black'}
+  style: { bg: 'black' }
 } as const;
 
 export const headerProps = {
   top: 0,
   left: "center",
   width: "100%",
-  height: 8, 
+  height: 8,
   content: '',
   tags: true,
   style: {
@@ -40,7 +42,7 @@ export const loadingScreenProps = {
 };
 
 export const messageBoxProps = {
-  top: 10, 
+  top: 10,
   left: 0,
   width: "80%",
   height: "85%-8",
@@ -110,7 +112,7 @@ export const statusBarProps = {
 
   style: {
     fg: "#2a1f1d",
-  
+
     bold: true,
   },
   content: "",
@@ -145,10 +147,10 @@ export const menuProps = {
     bg: "#2a1f1d",
   },
   items: {
-    "Key Binds": () => {}, // These will be set dynamically
-    Servers: () => {},
-    Region: () => {},
-    Help: () => {},
+    "Key Binds": () => { }, // These will be set dynamically
+    Servers: () => { },
+    Region: () => { },
+    Help: () => { },
   },
   top: 8,
   left: 0,
@@ -202,7 +204,7 @@ export const tabBarProps = {
 /*=======================================================*
  |                      MODALS                           |
  *=======================================================*/
- 
+
 export const ModalProps = {
   top: "center",
   left: "center",
@@ -300,3 +302,156 @@ export const MenuModalOptionListProps = {
   },
 };
 
+// INDEX LAYOUT COMPONENTS 
+export const containerProps = {
+  top: 9, // after the header 
+  left: 0,
+  width: '100%',
+  height: '100%',
+  style: { bg: '#000000' }
+}
+
+export const connectionBoxProps = {
+  top: 0,
+  left: 'center',
+  width: 60,
+  height: 8,
+  border: {
+    type: 'line',
+    fg: '#d4af37',
+  },
+  style: {
+    fg: '#e8d8b5',
+    bg: '#000000'
+  }
+}
+
+export const nickLabelProps = {
+  top: 1,
+  left: 2,
+  content: 'Nick',
+  style: {
+    fg: '#d4af37'
+  }
+}
+
+export const nickInputProps = {
+  top: 1,
+  left: 10,
+  width: 30,
+  height: 1,
+  inputOnFocus: true,
+  value: 'guest' + Math.floor(Math.random() * 1000),
+  style: {
+    fg: 'white',
+    bg: '#1a1a1a',
+    focus: {
+      fg: '#d4af37',
+      bg: '#2a2a2a'
+    }
+  }
+}
+
+export const serverLabelProps = {
+  top: 3,
+  left: 2,
+  content: 'Server',
+  style: {
+    fg: '#d4af37'
+  }
+}
+
+export const serverInputProps = {
+  top: 3,
+  left: 10,
+  width: 30,
+  height: 1,
+  inputOnFocus: true,
+  value: 'irc.libera.chat', // default server option 
+  style: {
+    fg: 'white',
+    bg: '#1a1a1a',
+    focus: {
+      fg: '#d4af37',
+      bg: '#2a2a2a'
+    }
+  }
+}
+
+export const channelLabelProps = {
+  top: 5,
+  left: 2,
+  content: 'Channel',
+  style: { fg: '#d4af37' }
+}
+
+export const channelInputProps = {
+  top: 5,
+  left: 10,
+  width: 30,
+  height: 1,
+  inputOnFocus: true,
+  value: '#byteparty',
+  style: {
+    fg: 'white',
+    bg: '#1a1a1a',
+    focus: {
+      fg: '#d4af37',
+      bg: '#2a2a2a'
+    }
+  }
+}
+
+export const connectBtnProps = {
+  bottom: 0,
+  right: 0,
+  width: 20,
+  height: 1,
+  content: '{bold}[ Connect ]{/bold}',
+  tags: true,
+  style: {
+    fg: 'black',
+    bg: '#d4af37',
+    focus: {
+      fg: '#d4af37',
+      bg: 'white'
+    }
+  },
+  mouse: true,
+  keys: true
+}
+
+export const quickConnectProps = {
+  top: 9, // immediately after connectionBox
+  left: 'center',
+  width: 60,
+  height: 6,
+  label: ' Quick Connect ',
+  border: { type: 'line', fg: '#d4af37' },
+  style: {
+    fg: '#e8d8b5',
+    bg: '#000000',
+    selected: { fg: '#d4af37', bg: '#2a1f1d' }
+  },
+  items: [
+    '➤ irc.libera.chat  - #byteparty',
+    '➤ irc.libera.chat  - #irchelp',
+    '➤ irc.oftc.net     - #debian',
+    '➤ irc.efnet.org    - #mirc',
+    '➤ Custom connection...'
+  ],
+  keys: true,
+  vi: true,
+  mouse: true,
+  tags: true
+}
+
+export const footerProps = {
+  bottom: 1,
+  left: 0,
+  width: '100%',
+  height: 1,
+  content: '{reverse} [Tab:nav] [Enter:connect] [F1:help] [F2:servers] [F10:quit] {/reverse}',
+  tags: true,
+  style: { fg: 'black', bg: '#d4af37' }
+}
