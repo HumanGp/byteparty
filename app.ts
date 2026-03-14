@@ -12,119 +12,71 @@
 
 
 import { APP_UI } from "./src/components/UI/APP_UI";
-import { DemoSimulator } from "./src/components/lib/test";
+import { BootAnimation } from "./src/components/animations/BootAnimation";
 import { EventBus } from "./src/events/EventBus";
 
 class App {
-  private static instance: App | null = null;
   private ui!: APP_UI;
-  private chatSimulator!: DemoSimulator;
   private eventBus: EventBus;
-  private running = false;
+  private bootAnimation!: BootAnimation;
 
-  private constructor() {
+  constructor() {
     this.eventBus = EventBus.getInstance();
     this.ui = APP_UI.getInstance();
-    this.chatSimulator = new DemoSimulator(this.ui);
-    this.setupGlobalEventListeners();
   }
 
-  public static getInstance(): App {
-    if (!App.instance) {
-      App.instance = new App();
-    }
-    return App.instance;
-  }
-
-  public async start(): Promise<void> {
+  public start(): void {
     this.ui.screen.render();
-    this.ui.bootApplication(() => {
-    this.onBootComplete();
-    });
+    this.bootApplication();
   }
 
-  private onBootComplete(): void {
-    this.ui.addSystemMessage(
-      "Welcome to Westhetic Chat! Type /help for commands."
-    );
-    this.ui.addSystemMessage("Connected users: 12");
-
-    //  simulation command
-    this.ui.addSystemMessage(
-      "Type /simulate to start chat simulation with 50+ users"
-    );
-
-   
-    this.ui.screen.render();
-
-    //  simulation command handler
-    this.setupSimulationCommands();
+  private _app_init_(): void {
+    // initialize global events and use index layout as default
+    this._global_events_init_();
+    this.ui._layouts_init_();
+    this.ui._indexLayout_init_();
   }
 
-  private setupSimulationCommands(): void {
-    const originalHandleCommand = (this.ui as any).handleCommand;
+  /*=======================================================*
+  |                 BOOT THE APPLICATION                  |
+  *=======================================================*/
 
-    (this.ui as any).handleCommand = (command: string) => {
-      const parts = command.substring(1).split(" ");
-      const cmd = parts[0]!.toLowerCase();
-
-      switch (cmd) {
-        case "simulate":
-        case "sim":
-        case "//sssiiimmm":
-          this.chatSimulator.startSimulation();
-          break;
-
-        case "stopsim":
-        case "stopsimulation":
-          this.chatSimulator.stopSimulation();
-          break;
-
-        case "simstatus":
-          this.ui.addSystemMessage(
-            this.chatSimulator.isSimulating
-              ? "Simulation is ACTIVE with 50+ users"
-              : "Simulation is INACTIVE"
-          );
-          break;
-
-        default:
-          // Call original handler
-          if (originalHandleCommand) {
-            originalHandleCommand.call(this.ui, command);
-          }
-      }
-    };
+  public async bootApplication(): Promise<void> {
+    this.bootAnimation = new BootAnimation(this.ui.screen, () => this._app_init_());
+    this.bootAnimation.start();
   }
 
-  public setupGlobalEventListeners(): void {
-    // Quit request from UI
-    this.eventBus.on("app:quit", () => {
+  /*=======================================================*
+   |                  CONNECT TO IRC SERVER                |                  |
+   *=======================================================*/
+  public connectToServer(server: string, port: string, nick: string, channel: string) {
+    // connect to server and update layout  
 
-      this.quit();
+    //TODO: IRC SERVER CONNECTION
+
+    // render channel layout after server connection success
+    this.ui._channelLayout_init_();
+  }
+
+  /*=======================================================*
+   |                  EVENT HANDLERS                        |
+   *=======================================================*/
+  public _global_events_init_(): void {
+    // handle quit 
+    this.eventBus.on('app:quit', () => {
+      console.log('app quit')
     });
 
-    // Connection events, etc.
-    this.eventBus.on(
-      "connection:status",
-      (status: "Connected" | "Connecting" | "Disconnected" | "Error") => {
-        this.ui.updateConnectionStatus(status);
-      }
-    );
+    // handle irc server connect
+    this.eventBus.on("irc:server_connect", (server: string, port: string, nick: string, channel: string) => {
+      this.connectToServer(server, port, nick, channel);
+    });
 
-    // Any other cross-cutting concerns
+    return;
   }
 
-  public quit(): void {
-    this.ui.statusBarManager.stopUpdates();
-    this.ui.addSystemMessage("Shutting down ByteParty... Goodbye!");
-    // Give UI time to show message
-    setTimeout(() => {
-      process.exit(0);
-    }, 1000);
-  }
 }
 
 // Start the chat
-const chat = App.getInstance();
+const chat = new App();
 chat.start();
