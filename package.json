@@ -21,7 +21,6 @@
   "author": "HumanGpt",
   "devDependencies": {
     "@types/blessed": "^0.1.25",
-    "@types/module-alias": "^2.0.4",
     "@types/node": "^24.7.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
