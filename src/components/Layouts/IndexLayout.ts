@@ -1,154 +1,51 @@
+/**
+ * BUGS IN THIS FILE:
+ * - [MODULE_NOT_FOUND]: I currently have a tsconfig file which has a compilerOptions configs which contains a baseUrl value of "./src"
+ *   and a paths value of {"@/*": ["*"]}, and a include property which has value  ["src\/**\/*"] (ignore back ticks escape)
+ *   so this enables me to import some modules with a `@` annotation with respect to src directory
+ *   but it is strange that when i import types with this annotation, it works but when i import events module it raises errors
+ *   in this current file and other files are included in the require stack error, but when i replace the events module import with
+ *   normal dot tree reference it works and the require stack doesn't complain.
+ */
+
+import { EventBus } from "../../events/EventBus";
 import { Layout } from '@/types/Layout';
 import * as blessed from 'blessed';
 import { Widgets } from 'blessed';
-import { APP_UI } from '../UI/APP_UI';
+import {
+  channelInputProps,
+  channelLabelProps,
+  connectBtnProps,
+  connectionBoxProps,
+  containerProps,
+  footerProps,
+  nickInputProps,
+  nickLabelProps,
+  quickConnectProps,
+  serverInputProps,
+  serverLabelProps
+} from "../UI/ui";
+
 
 export function createIndexLayout(screen: Widgets.Screen): Layout {
-  const container = blessed.box({
-    parent: screen,
-    top: 9, // immediately after the header which created dynamically by the typewritter
-    left: 0,
-    width: '100%',
-    height: '100%',
-    style: { bg: '#000000' }
-  });
 
-  // Simple connection form 
-  const connectionBox = blessed.box({
-    parent: container,
-    top: 0,
-    left: 'center',
-    width: 60,
-    height: 8,
-    //@ts-expect-error: fg border property type incompability 'string' and 'number'
-    border: { type: 'line', fg: '#d4af37' },
-    style: { fg: '#e8d8b5', bg: '#000000' }
-  });
+  /*=======================================================*
+   |              BLESSED TUI ELEMENTS                     |
+   *=======================================================*/
 
-  const nickLabel = blessed.text({
-    parent: connectionBox,
-    top: 1,
-    left: 2,
-    content: 'Nick:',
-    style: { fg: '#d4af37' }
-  });
-
-  const nickInput = blessed.textbox({
-    parent: connectionBox,
-    top: 1,
-    left: 10,
-    width: 30,
-    height: 1,
-    inputOnFocus: true,
-    value: 'guest' + Math.floor(Math.random() * 1000),
-    style: {
-      fg: 'white',
-      bg: '#1a1a1a',
-      focus: { fg: '#d4af37', bg: '#2a2a2a' }
-    }
-  });
-
-  const serverLabel = blessed.text({
-    parent: connectionBox,
-    top: 3,
-    left: 2,
-    content: 'Server:',
-    style: { fg: '#d4af37' }
-  });
-
-  const serverInput = blessed.textbox({
-    parent: connectionBox,
-    top: 3,
-    left: 10,
-    width: 30,
-    height: 1,
-    inputOnFocus: true,
-    value: 'irc.libera.chat',
-    style: {
-      fg: 'white',
-      bg: '#1a1a1a',
-      focus: { fg: '#d4af37', bg: '#2a2a2a' }
-    }
-  });
-
-  const channelLabel = blessed.text({
-    parent: connectionBox,
-    top: 5,
-    left: 2,
-    content: 'Channel:',
-    style: { fg: '#d4af37' }
-  });
-
-  const channelInput = blessed.textbox({
-    parent: connectionBox,
-    top: 5,
-    left: 10,
-    width: 30,
-    height: 1,
-    inputOnFocus: true,
-    value: '#byteparty',
-    style: {
-      fg: 'white',
-      bg: '#1a1a1a',
-      focus: { fg: '#d4af37', bg: '#2a2a2a' }
-    }
-  });
-
-  const connectBtn = blessed.button({
-    parent: connectionBox,
-    bottom: 0,
-    right: 0,
-    width: 20,
-    height: 1,
-    content: '{bold}[ Connect ]{/bold}',
-    tags: true,
-    style: {
-      fg: 'black',
-      bg: '#d4af37',
-      focus: { fg: '#d4af37', bg: 'white' },
-      hover: { bg: '#e8d8b5' }
-    },
-    mouse: true,
-    keys: true
-  });
-
-  // Quick connect to popular networks (like an IRC client's server list)
-  const quickConnect = blessed.list({
-    parent: container,
-    top: 9, // immediately after connectionBox
-    left: 'center',
-    width: 60,
-    height: 6,
-    label: ' Quick Connect ',
-    //@ts-expect-error: fg border property type incompability 'string' and 'number'
-    border: { type: 'line', fg: '#d4af37' },
-    style: {
-      fg: '#e8d8b5',
-      bg: '#000000',
-      selected: { fg: '#d4af37', bg: '#2a1f1d' }
-    },
-    items: [
-      '{cyan-fg}➤{/cyan-fg} irc.libera.chat  - #byteparty',
-      '{cyan-fg}➤{/cyan-fg} irc.libera.chat  - #irchelp',
-      '{cyan-fg}➤{/cyan-fg} irc.oftc.net     - #debian',
-      '{cyan-fg}➤{/cyan-fg} irc.efnet.org    - #mirc',
-      '{cyan-fg}➤{/cyan-fg} Custom connection...'
-    ],
-    keys: true,
-    vi: true
-  });
-
-  // Footer with classic IRC-style status line
-  const footer = blessed.box({
-    parent: container,
-    bottom: 1,
-    left: 0,
-    width: '100%',
-    height: 1,
-    content: '{reverse} [Tab:nav] [Enter:connect] [F1:help] [F2:servers] [F10:quit] {/reverse}',
-    tags: true,
-    style: { fg: 'black', bg: '#d4af37' }
-  });
+  const container = blessed.box({ parent: screen, ...containerProps });
+  //@ts-expect-error: type fg incompability  string & number
+  const connectionBox = blessed.box({ parent: container, ...connectionBoxProps });
+  const nickLabel = blessed.text({ parent: connectionBox, ...nickLabelProps });
+  const nickInput = blessed.textbox({ parent: connectionBox, ...nickInputProps });
+  const serverLabel = blessed.text({ parent: connectionBox, ...serverLabelProps });
+  const serverInput = blessed.textbox({ parent: connectionBox, ...serverInputProps });
+  const channelLabel = blessed.text({ parent: connectionBox, ...channelLabelProps });
+  const channelInput = blessed.textbox({ parent: connectionBox, ...channelInputProps });
+  const connectBtn = blessed.button({ parent: connectionBox, ...connectBtnProps });
+  //@ts-expect-error: type fg incompability string & number
+  const quickConnect = blessed.list({ parent: container, ...quickConnectProps });
+  const footer = blessed.box({ parent: container, ...footerProps });
 
   // Handle connection
   const connect = () => {
@@ -156,9 +53,10 @@ export function createIndexLayout(screen: Widgets.Screen): Layout {
     const server = serverInput.getValue() || 'irc.libera.chat';
     const channel = channelInput.getValue() || '#byteparty';
 
-    // Switch to channel layout
-    const app = APP_UI.getInstance();
-    app.connectToServer(server, 6667, nick, channel);
+    // Emit connection event and Switch to channel layout
+    const eventBus = EventBus.getInstance();
+
+    eventBus.emit("irc:server_connect", server, 6667, nick, channel);
   };
 
   connectBtn.on('press', connect);
@@ -191,19 +89,6 @@ export function createIndexLayout(screen: Widgets.Screen): Layout {
     connect();
   });
 
-  // Tab navigation between inputs and quick connect
-  const elements = [nickInput, serverInput, channelInput, connectBtn, quickConnect];
-  let currentElement = 0;
-
-  container.key(['tab'], () => {
-    currentElement = (currentElement + 1) % elements.length;
-    elements[currentElement]!.focus();
-  });
-
-  container.key(['S-tab'], () => {
-    currentElement = (currentElement - 1 + elements.length) % elements.length;
-    elements[currentElement]!.focus();
-  });
 
   // Enter in inputs moves to next field
   nickInput.on('submit', () => serverInput.focus());
@@ -212,12 +97,7 @@ export function createIndexLayout(screen: Widgets.Screen): Layout {
 
   return {
     type: 'index',
-    elements: [container,
-	   // motd,
-	    connectionBox, quickConnect, footer],
-    focusOrder: [nickInput, serverInput, channelInput, connectBtn, quickConnect],
-    onActivate: () => {
-      nickInput.focus();
-    }
+    elements: [container, connectionBox, quickConnect, footer],
+    focusOrder: [nickInput, serverInput, channelInput, quickConnect],
   };
 }
