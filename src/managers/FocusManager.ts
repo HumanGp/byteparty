@@ -20,10 +20,6 @@ export class FocusManager {
     this.onFocusChange = onFocusChange!;
     EventBus.getInstance().on("focus:next", () => this.next());
     EventBus.getInstance().on("focus:previous", () => this.previous());
-    EventBus.getInstance().on("focus:input", () => this.focusInput());
-    EventBus.getInstance().on("focus:users", () => this.focusUserList());
-    EventBus.getInstance().on("focus:menu", () => this.focusMenu());
-    EventBus.getInstance().on("focus:messages", () => this.focusMessages());
   }
 
   public static getInstance(
@@ -44,6 +40,10 @@ export class FocusManager {
     if (this.cycle.length > 0 && this.currentIndex >= this.cycle.length) {
       this.currentIndex = 0;
     }
+  }
+
+  public clearRegisteredList(): void {
+    this.cycle = [];
   }
 
   /**
@@ -92,21 +92,7 @@ export class FocusManager {
     return false;
   }
 
-  /**
-   * Convenience shortcuts
-   */
-  public focusInput(): boolean {
-    return this.focusByIndex(0);
-  }
-  public focusMessages(): boolean {
-    return this.focusByIndex(1);
-  }
-  public focusUserList(): boolean {
-    return this.focusByIndex(2);
-  }
-  public focusMenu(): boolean {
-    return this.focusByIndex(3);
-  }
+
 
   /**
    * Get current focused element
